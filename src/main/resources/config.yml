@@ -1,0 +1,18 @@
+# Herald Configuration
+
+# Email Recipients
+# List of email addresses to notify when a player joins
+email-recipients:
+  - "admin@example.com"
+  - "moderator@example.com"
+
+# SMTP Configuration
+smtp:
+  server: "smtp.example.com"
+  port: 587
+  username: "your-email@example.com"
+  password: "your-password"
+  use-tls: true
+
+email:
+  sender: "minecraft-server@example.com"
