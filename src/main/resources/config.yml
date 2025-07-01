@@ -6,13 +6,13 @@ email-recipients:
   - "admin@example.com"
   - "moderator@example.com"
 
-# SMTP Configuration
+# Herald config.yml
 smtp:
-  server: "smtp.example.com"
-  port: 587
-  username: "your-email@example.com"
-  password: "your-password"
-  use-tls: true
+  server: "mailserver"  # Or your server's IP address if Herald isn't on the same machine
+  port: 25             # Or 587 if you want to use TLS
+  username: ""         # Leave empty for no authentication
+  password: ""         # Leave empty for no authentication
+  use-tls: false       # Set to true if using port 587
 
 email:
-  sender: "minecraft-server@example.com"
+  sender: "minecraft@minecraft-mail.local"

@@ -15,3 +15,49 @@ services:
       - OPERATOR_NAME=${OPERATOR_NAME}
       - OPERATOR_LEVEL=${OPERATOR_LEVEL}
       - OVERWRITE_EXISTING_SERVER=${OVERWRITE_EXISTING_SERVER}
+    networks:
+      - mail-network
+
+  mailserver:
+    image: boky/postfix:latest
+    container_name: minecraft-mailserver
+    ports:
+      - "25:25"      # SMTP port
+      - "587:587"    # Submission port with TLS
+    environment:
+      # Basic configuration
+      - POSTFIX_MAIL_NAME=minecraft-mail.local
+      - PERMIT_DOCKER=host
+      - RELAY_NETWORKS=:192.168.0.0/24  # Replace with your local network if needed
+      - ALLOW_EMPTY_SENDER_DOMAINS="yes"  # Allow empty sender domains for testing
+      # Authentication - uncomment if you want to add authentication
+      # - POSTFIX_user1=password1
+      # - POSTFIX_user2=password2
+
+      # Uncomment for verbose logging during setup
+      # - POSTFIX_DEBUG=yes
+    volumes:
+      - mail-data:/var/mail
+      - mail-logs:/var/log/mail
+    restart: unless-stopped
+    networks:
+      - mail-network
+
+  # Optional: Add MailHog to catch and view emails during testing
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: minecraft-mailhog
+    ports:
+      - "1025:1025"  # SMTP port
+      - "8025:8025"  # Web interface
+    networks:
+      - mail-network
+    restart: unless-stopped
+
+volumes:
+  mail-data:
+  mail-logs:
+
+networks:
+  mail-network:
+    driver: bridge
