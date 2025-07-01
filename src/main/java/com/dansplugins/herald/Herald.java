@@ -60,7 +60,7 @@ public final class Herald extends JavaPlugin implements Listener {
         String serverName = getServer().getName().isEmpty() ? "Minecraft" : getServer().getName();
 
         // Send email notification
-        String subject = "Player joined " + serverName + " server";
+        String subject = playerName + " joined " + serverName + " server";
         String body = playerName + " has joined the server at " + new java.util.Date();
 
         // Send email asynchronously to not block the main server thread
