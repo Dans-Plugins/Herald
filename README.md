@@ -1,7 +1,7 @@
 # Herald
 Herald is a Minecraft server plugin that sends email notifications when players join the server.
 
-![screenshot of emails](./screenshots/mailhog-7-1-2025.png)
+![screenshot of emails](./screenshots/mailhog-7-1-2025.PNG)
 
 ## Features
 - Email notification system for player logins
