@@ -16,3 +16,8 @@ smtp:
 
 email:
   sender: "minecraft@minecraft-mail.local"
+
+# Discord Configuration
+discord:
+  enabled: false       # Set to true to enable Discord notifications
+  webhook-url: ""      # Discord webhook URL for the channel you want to send notifications to

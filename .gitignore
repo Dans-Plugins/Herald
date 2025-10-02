@@ -113,3 +113,7 @@ buildNumber.properties
 run/
 
 .env
+
+# Gradle
+.gradle/
+build/

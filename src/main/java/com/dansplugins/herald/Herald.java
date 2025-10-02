@@ -21,6 +21,9 @@ public final class Herald extends JavaPlugin implements Listener {
     private String smtpPassword;
     private String emailSender;
     private boolean useTLS;
+    private boolean discordEnabled;
+    private String discordWebhookUrl;
+    private DiscordNotifier discordNotifier;
 
     @Override
     public void onEnable() {
@@ -52,6 +55,16 @@ public final class Herald extends JavaPlugin implements Listener {
         smtpPassword = getConfig().getString("smtp.password");
         emailSender = getConfig().getString("email.sender");
         useTLS = getConfig().getBoolean("smtp.use-tls", true);
+        
+        // Load Discord settings
+        discordEnabled = getConfig().getBoolean("discord.enabled", false);
+        discordWebhookUrl = getConfig().getString("discord.webhook-url");
+        
+        // Initialize Discord notifier if enabled
+        if (discordEnabled && discordWebhookUrl != null && !discordWebhookUrl.isEmpty()) {
+            discordNotifier = new DiscordNotifier(discordWebhookUrl);
+            getLogger().info("Discord notifications enabled");
+        }
     }
 
     @EventHandler
@@ -73,6 +86,21 @@ public final class Herald extends JavaPlugin implements Listener {
                 e.printStackTrace();
             }
         });
+        
+        // Send Discord notification if enabled
+        if (discordEnabled && discordNotifier != null) {
+            String discordMessage = "**" + playerName + "** joined the **" + serverName + "** server";
+            
+            getServer().getScheduler().runTaskAsynchronously(this, () -> {
+                try {
+                    discordNotifier.sendMessage(discordMessage);
+                    getLogger().info("Discord notification sent successfully for player: " + playerName);
+                } catch (Exception e) {
+                    getLogger().severe("Failed to send Discord notification: " + e.getMessage());
+                    e.printStackTrace();
+                }
+            });
+        }
     }
 
     private void sendEmail(String subject, String body) throws MessagingException {

@@ -1,10 +1,12 @@
 # Herald
-Herald is a Minecraft server plugin that sends email notifications when players join the server.
+Herald is a Minecraft server plugin that sends notifications when players join the server. It supports both email and Discord notifications.
 
 ![screenshot of emails](./screenshots/mailhog-7-1-2025.PNG)
 
 ## Features
 - Email notification system for player logins
+- Discord webhook notifications for player logins
+- Configurable notification methods (email, Discord, or both)
 - Easy to configure and use
 - Built-in mail server setup with Docker
 
@@ -42,10 +44,10 @@ This setup creates two mail-related services:
 All emails sent to the mail server are relayed to MailHog, where you can view them in a convenient web interface.
 
 ## Configuration
-After first run, a configuration file will be created that you can modify to set up your email notification preferences.
+After first run, a configuration file will be created that you can modify to set up your notification preferences.
 
 ### Herald Plugin Configuration
-Update your Herald `config.yml` to use the mail server:
+Update your Herald `config.yml` to configure email and/or Discord notifications:
 
 ```yaml
 # Herald Configuration
@@ -66,9 +68,30 @@ smtp:
 
 email:
   sender: "minecraft@minecraft-mail.local"
+
+# Discord Configuration
+discord:
+  enabled: false         # Set to true to enable Discord notifications
+  webhook-url: ""        # Your Discord webhook URL
 ```
 
 Make sure to replace "mailserver" with your server's IP address if your Minecraft server is not running in the same Docker network.
+
+### Setting up Discord Notifications
+To enable Discord notifications:
+
+1. In your Discord server, go to Server Settings → Integrations → Webhooks
+2. Click "New Webhook"
+3. Configure the webhook:
+   - Set a name (e.g., "Herald Bot")
+   - Choose the channel where notifications should be sent
+   - Copy the webhook URL
+4. In your Herald `config.yml`, set:
+   - `discord.enabled: true`
+   - `discord.webhook-url: "<your-webhook-url>"`
+5. Restart your Minecraft server or reload the plugin
+
+You can use Discord notifications alone or in combination with email notifications.
 
 ## Testing
 The Docker Compose setup includes a test Minecraft server that can be used to test the Herald plugin:
