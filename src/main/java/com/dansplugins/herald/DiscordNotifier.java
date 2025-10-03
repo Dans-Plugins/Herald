@@ -49,7 +49,7 @@ public class DiscordNotifier {
      * @param text The text to escape
      * @return The escaped text
      */
-    private String escapeJson(String text) {
+    String escapeJson(String text) {
         if (text == null) {
             return "";
         }
