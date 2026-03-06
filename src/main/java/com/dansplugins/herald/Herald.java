@@ -70,8 +70,8 @@ public final class Herald extends JavaPlugin implements Listener {
         String playerName = event.getPlayer().getName();
         String serverName = getServer().getName().isEmpty() ? "Minecraft" : getServer().getName();
 
-        for (Notifier notifier : notifiers) {
-            getServer().getScheduler().runTaskAsynchronously(this, () -> {
+        getServer().getScheduler().runTaskAsynchronously(this, () -> {
+            for (Notifier notifier : notifiers) {
                 try {
                     notifier.notifyPlayerJoin(playerName, serverName);
                     getLogger().info("Notification sent successfully for player: " + playerName
@@ -81,7 +81,7 @@ public final class Herald extends JavaPlugin implements Listener {
                             + notifier.getClass().getSimpleName() + ": " + e.getMessage());
                     e.printStackTrace();
                 }
-            });
-        }
+            }
+        });
     }
 }

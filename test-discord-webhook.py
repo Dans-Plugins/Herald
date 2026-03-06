@@ -33,7 +33,7 @@ def send_discord_message(webhook_url, content):
     
     # Send request
     try:
-        with urllib.request.urlopen(req) as response:
+        with urllib.request.urlopen(req, timeout=10) as response:
             status_code = response.getcode()
             print(f"Response code: {status_code}")
             

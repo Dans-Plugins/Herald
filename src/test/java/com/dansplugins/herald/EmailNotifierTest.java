@@ -188,6 +188,44 @@ class EmailNotifierTest {
                     notifier.sendNotification("Subject", "Body"));
             assertEquals("SMTP server not configured", ex.getMessage());
         }
+
+        @ParameterizedTest
+        @NullAndEmptySource
+        @DisplayName("sendNotification should throw for null or empty email sender")
+        void testNullOrEmptyEmailSenderThrows(String emailSender) {
+            List<String> recipients = Arrays.asList("user@example.com");
+            EmailNotifier notifier = new EmailNotifier(
+                    "smtp.example.com", 587, "user", "password", emailSender, true, recipients);
+
+            IllegalStateException ex = assertThrows(IllegalStateException.class, () ->
+                    notifier.sendNotification("Subject", "Body"));
+            assertEquals("Email sender address not configured", ex.getMessage());
+        }
+
+        @Test
+        @DisplayName("sendNotification should check SMTP server before email sender")
+        void testSmtpCheckedBeforeEmailSender() {
+            // SMTP missing, sender also missing — SMTP error surfaces first
+            List<String> recipients = Arrays.asList("user@example.com");
+            EmailNotifier notifier = new EmailNotifier(
+                    null, 587, "user", "password", null, true, recipients);
+
+            IllegalStateException ex = assertThrows(IllegalStateException.class, () ->
+                    notifier.sendNotification("Subject", "Body"));
+            assertEquals("SMTP server not configured", ex.getMessage());
+        }
+
+        @Test
+        @DisplayName("notifyPlayerJoin should throw IllegalStateException when email sender is missing")
+        void testNotifyPlayerJoinWithNoEmailSenderThrows() {
+            EmailNotifier notifier = new EmailNotifier(
+                    "smtp.example.com", 587, "user", "pass", null, true,
+                    Arrays.asList("recipient@example.com"));
+
+            IllegalStateException ex = assertThrows(IllegalStateException.class, () ->
+                    notifier.notifyPlayerJoin("Steve", "SurvivalServer"));
+            assertEquals("Email sender address not configured", ex.getMessage());
+        }
     }
 
     @Nested

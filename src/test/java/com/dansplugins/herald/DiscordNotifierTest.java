@@ -270,11 +270,18 @@ class DiscordNotifierTest {
         @CsvSource(delimiter = '|', value = {
             "C:\\Path | C:\\\\Path",
             "\\ | \\\\",
-            "\\\\ | \\\\\\\\",
-            "\\\\\\n | \\\\\\\\\\\\n"
+            "\\\\ | \\\\\\\\"
         })
         @DisplayName("escapeJson should escape backslashes correctly")
         void testEscapeJsonWithBackslashes(String input, String expected) {
+            assertEquals(expected, notifier.escapeJson(input));
+        }
+
+        @Test
+        @DisplayName("escapeJson should escape newline after backslash correctly")
+        void testEscapeJsonBackslashThenNewline() {
+            String input = "\\\n";
+            String expected = "\\\\\\n";
             assertEquals(expected, notifier.escapeJson(input));
         }
         

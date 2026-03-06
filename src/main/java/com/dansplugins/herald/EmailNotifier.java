@@ -63,23 +63,33 @@ public class EmailNotifier implements Notifier {
             throw new IllegalStateException("SMTP server not configured");
         }
 
+        if (emailSender == null || emailSender.isEmpty()) {
+            throw new IllegalStateException("Email sender address not configured");
+        }
+
+        boolean useAuth = smtpUsername != null && !smtpUsername.isEmpty();
+
         Properties props = new Properties();
         props.put("mail.smtp.host", smtpServer);
         props.put("mail.smtp.port", String.valueOf(smtpPort));
-        props.put("mail.smtp.auth", "true");
+        props.put("mail.smtp.auth", useAuth ? "true" : "false");
 
         if (useTLS) {
             props.put("mail.smtp.starttls.enable", "true");
         }
 
-        Authenticator authenticator = new Authenticator() {
-            @Override
-            protected PasswordAuthentication getPasswordAuthentication() {
-                return new PasswordAuthentication(smtpUsername, smtpPassword);
-            }
-        };
-
-        Session session = Session.getInstance(props, authenticator);
+        Session session;
+        if (useAuth) {
+            Authenticator authenticator = new Authenticator() {
+                @Override
+                protected PasswordAuthentication getPasswordAuthentication() {
+                    return new PasswordAuthentication(smtpUsername, smtpPassword);
+                }
+            };
+            session = Session.getInstance(props, authenticator);
+        } else {
+            session = Session.getInstance(props);
+        }
 
         Message message = new MimeMessage(session);
         message.setFrom(new InternetAddress(emailSender));

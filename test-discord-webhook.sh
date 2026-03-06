@@ -92,6 +92,8 @@ public class DiscordWebhookTest {
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
         connection.setRequestMethod("POST");
         connection.setRequestProperty("Content-Type", "application/json");
+        connection.setConnectTimeout(10000); // 10 seconds
+        connection.setReadTimeout(15000);    // 15 seconds
         connection.setDoOutput(true);
         
         // Create JSON payload with the message content
@@ -99,16 +101,20 @@ public class DiscordWebhookTest {
         
         System.out.println("Sending payload: " + jsonPayload);
         
-        try (OutputStream os = connection.getOutputStream()) {
-            byte[] input = jsonPayload.getBytes(StandardCharsets.UTF_8);
-            os.write(input, 0, input.length);
-        }
-        
-        int responseCode = connection.getResponseCode();
-        System.out.println("Response code: " + responseCode);
-        
-        if (responseCode < 200 || responseCode >= 300) {
-            throw new IOException("Discord webhook returned error code: " + responseCode);
+        try {
+            try (OutputStream os = connection.getOutputStream()) {
+                byte[] input = jsonPayload.getBytes(StandardCharsets.UTF_8);
+                os.write(input, 0, input.length);
+            }
+            
+            int responseCode = connection.getResponseCode();
+            System.out.println("Response code: " + responseCode);
+            
+            if (responseCode < 200 || responseCode >= 300) {
+                throw new IOException("Discord webhook returned error code: " + responseCode);
+            }
+        } finally {
+            connection.disconnect();
         }
     }
     
