@@ -1,23 +1,22 @@
 # Herald Configuration
 
-# Email Recipients
-# List of email addresses to notify when a player joins
-email-recipients:
-  - "admin@example.com"
-  - "moderator@example.com"
-
-# Herald config.yml
-smtp:
-  server: "mailserver"  # Or your server's IP address if Herald isn't on the same machine
-  port: 25             # Or 587 if you want to use TLS
-  username: ""         # Leave empty for no authentication
-  password: ""         # Leave empty for no authentication
-  use-tls: false       # Set to true if using port 587
-
-email:
-  sender: "minecraft@minecraft-mail.local"
-
-# Discord Configuration
+# Discord Configuration (flagship feature)
 discord:
   enabled: false       # Set to true to enable Discord notifications
   webhook-url: ""      # Discord webhook URL for the channel you want to send notifications to
+
+# Email Configuration (optional)
+# Email Recipients
+# List of email addresses to notify when a player joins
+email-recipients: []
+
+# Herald config.yml
+smtp:
+  server: ""           # Your SMTP server address
+  port: 587            # 587 for TLS, 25 for plain
+  username: ""         # Leave empty for no authentication
+  password: ""         # Leave empty for no authentication
+  use-tls: true        # Set to true if using port 587
+
+email:
+  sender: ""           # The email address to send notifications from
