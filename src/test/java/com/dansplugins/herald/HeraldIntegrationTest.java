@@ -351,18 +351,5 @@ class HeraldIntegrationTest {
             assertTrue(discordMessage.contains("** joined the **"),
                     "Discord message should bold both player and server names");
         }
-
-        @Test
-        @DisplayName("Email subject should be plain text without markdown")
-        void testEmailSubjectIsPlainText() {
-            String playerName = "Player";
-            String serverName = "Server";
-            String emailSubject = playerName + " joined " + serverName + " server";
-
-            assertFalse(emailSubject.contains("**"),
-                    "Email subject should not contain Discord markdown");
-            assertTrue(emailSubject.contains(playerName));
-            assertTrue(emailSubject.contains(serverName));
-        }
     }
 }

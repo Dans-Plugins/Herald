@@ -1,0 +1,80 @@
+package com.dansplugins.herald;
+
+import jakarta.mail.*;
+import jakarta.mail.internet.InternetAddress;
+import jakarta.mail.internet.MimeMessage;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Properties;
+
+public class EmailNotifier {
+
+    private final String smtpServer;
+    private final int smtpPort;
+    private final String smtpUsername;
+    private final String smtpPassword;
+    private final String emailSender;
+    private final boolean useTLS;
+    private final List<String> recipients;
+
+    public EmailNotifier(String smtpServer, int smtpPort, String smtpUsername,
+                         String smtpPassword, String emailSender, boolean useTLS,
+                         List<String> recipients) {
+        this.smtpServer = smtpServer;
+        this.smtpPort = smtpPort;
+        this.smtpUsername = smtpUsername;
+        this.smtpPassword = smtpPassword;
+        this.emailSender = emailSender;
+        this.useTLS = useTLS;
+        this.recipients = recipients != null ? new ArrayList<>(recipients) : new ArrayList<>();
+    }
+
+    /**
+     * Send an email notification with the given subject and body.
+     *
+     * @param subject The email subject line
+     * @param body    The email body text
+     * @throws IllegalStateException if recipients or SMTP server are not configured
+     * @throws MessagingException    if there is an error sending the email
+     */
+    public void sendNotification(String subject, String body) throws MessagingException {
+        if (recipients.isEmpty()) {
+            throw new IllegalStateException("No email recipients configured");
+        }
+
+        if (smtpServer == null || smtpServer.isEmpty()) {
+            throw new IllegalStateException("SMTP server not configured");
+        }
+
+        Properties props = new Properties();
+        props.put("mail.smtp.host", smtpServer);
+        props.put("mail.smtp.port", String.valueOf(smtpPort));
+        props.put("mail.smtp.auth", "true");
+
+        if (useTLS) {
+            props.put("mail.smtp.starttls.enable", "true");
+        }
+
+        Authenticator authenticator = new Authenticator() {
+            @Override
+            protected PasswordAuthentication getPasswordAuthentication() {
+                return new PasswordAuthentication(smtpUsername, smtpPassword);
+            }
+        };
+
+        Session session = Session.getInstance(props, authenticator);
+
+        Message message = new MimeMessage(session);
+        message.setFrom(new InternetAddress(emailSender));
+
+        for (String recipient : recipients) {
+            message.addRecipient(Message.RecipientType.TO, new InternetAddress(recipient));
+        }
+
+        message.setSubject(subject);
+        message.setText(body);
+
+        Transport.send(message);
+    }
+}
