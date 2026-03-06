@@ -261,4 +261,105 @@ class EmailNotifierTest {
             assertFalse(subject.contains("**"));
         }
     }
+
+    @Nested
+    @DisplayName("Notifier Interface Tests")
+    class NotifyPlayerJoinTests {
+
+        @Test
+        @DisplayName("EmailNotifier should implement the Notifier interface")
+        void testImplementsNotifierInterface() {
+            EmailNotifier notifier = new EmailNotifier(
+                    "smtp.example.com", 587, "user", "pass", "sender@example.com", true,
+                    Arrays.asList("recipient@example.com"));
+            assertInstanceOf(Notifier.class, notifier);
+        }
+
+        @Test
+        @DisplayName("notifyPlayerJoin should throw IllegalStateException when no recipients are configured")
+        void testNotifyPlayerJoinWithNoRecipientsThrows() {
+            EmailNotifier notifier = new EmailNotifier(
+                    "smtp.example.com", 587, "user", "pass", "sender@example.com", true,
+                    Collections.emptyList());
+
+            IllegalStateException ex = assertThrows(IllegalStateException.class, () ->
+                    notifier.notifyPlayerJoin("Steve", "SurvivalServer"));
+            assertEquals("No email recipients configured", ex.getMessage());
+        }
+
+        @Test
+        @DisplayName("notifyPlayerJoin should throw IllegalStateException when SMTP server is missing")
+        void testNotifyPlayerJoinWithNoSmtpThrows() {
+            EmailNotifier notifier = new EmailNotifier(
+                    null, 587, "user", "pass", "sender@example.com", true,
+                    Arrays.asList("recipient@example.com"));
+
+            IllegalStateException ex = assertThrows(IllegalStateException.class, () ->
+                    notifier.notifyPlayerJoin("Steve", "SurvivalServer"));
+            assertEquals("SMTP server not configured", ex.getMessage());
+        }
+
+        @Test
+        @DisplayName("notifyPlayerJoin should format a plain-text subject without Markdown")
+        void testNotifyPlayerJoinFormatsSubjectCorrectly() throws Exception {
+            final String[] capturedSubject = {null};
+            final String[] capturedBody = {null};
+            EmailNotifier notifier = new EmailNotifier(
+                    "smtp.example.com", 587, "user", "pass", "sender@example.com", true,
+                    Arrays.asList("recipient@example.com")) {
+                @Override
+                public void sendNotification(String subject, String body) {
+                    capturedSubject[0] = subject;
+                    capturedBody[0] = body;
+                }
+            };
+
+            notifier.notifyPlayerJoin("Steve", "MySurvivalServer");
+
+            assertEquals("Steve joined MySurvivalServer server", capturedSubject[0]);
+            assertFalse(capturedSubject[0].contains("**"), "Email subject must not contain Discord markdown");
+        }
+
+        @Test
+        @DisplayName("notifyPlayerJoin should include player name in email body")
+        void testNotifyPlayerJoinBodyContainsPlayerName() throws Exception {
+            final String[] capturedBody = {null};
+            EmailNotifier notifier = new EmailNotifier(
+                    "smtp.example.com", 587, "user", "pass", "sender@example.com", true,
+                    Arrays.asList("recipient@example.com")) {
+                @Override
+                public void sendNotification(String subject, String body) {
+                    capturedBody[0] = body;
+                }
+            };
+
+            notifier.notifyPlayerJoin("Alex", "CreativeWorld");
+
+            assertNotNull(capturedBody[0]);
+            assertTrue(capturedBody[0].startsWith("Alex"), "Body should start with player name");
+            assertTrue(capturedBody[0].contains("has joined the server at"),
+                    "Body should describe the join event");
+        }
+
+        @Test
+        @DisplayName("notifyPlayerJoin email subject should differ from Discord message format for same names")
+        void testNotifyPlayerJoinSubjectDiffersFromDiscordFormat() throws Exception {
+            final String[] capturedSubject = {null};
+            EmailNotifier emailNotifier = new EmailNotifier(
+                    "smtp.example.com", 587, "user", "pass", "sender@example.com", true,
+                    Arrays.asList("recipient@example.com")) {
+                @Override
+                public void sendNotification(String subject, String body) {
+                    capturedSubject[0] = subject;
+                }
+            };
+
+            emailNotifier.notifyPlayerJoin("Player", "Server");
+
+            String discordFormat = "**Player** joined the **Server** server";
+            assertNotEquals(discordFormat, capturedSubject[0]);
+            assertTrue(capturedSubject[0].contains("Player"));
+            assertFalse(capturedSubject[0].contains("**"));
+        }
+    }
 }

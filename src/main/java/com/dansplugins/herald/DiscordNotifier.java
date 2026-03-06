@@ -6,7 +6,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 
-public class DiscordNotifier {
+public class DiscordNotifier implements Notifier {
     
     private final String webhookUrl;
     
@@ -14,6 +14,20 @@ public class DiscordNotifier {
         this.webhookUrl = webhookUrl;
     }
     
+    /**
+     * Send a player-join notification to Discord.
+     * Formats the message using Discord Markdown bold syntax and sends it via webhook.
+     *
+     * @param playerName the name of the player who joined
+     * @param serverName the name of the server they joined
+     * @throws IOException if there's an error sending the message
+     */
+    @Override
+    public void notifyPlayerJoin(String playerName, String serverName) throws IOException {
+        String content = "**" + playerName + "** joined the **" + serverName + "** server";
+        sendMessage(content);
+    }
+
     /**
      * Send a message to Discord via webhook
      * @param content The message content to send

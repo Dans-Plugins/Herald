@@ -8,7 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 
-public class EmailNotifier {
+public class EmailNotifier implements Notifier {
 
     private final String smtpServer;
     private final int smtpPort;
@@ -28,6 +28,22 @@ public class EmailNotifier {
         this.emailSender = emailSender;
         this.useTLS = useTLS;
         this.recipients = recipients != null ? new ArrayList<>(recipients) : new ArrayList<>();
+    }
+
+    /**
+     * Send a player-join notification via email.
+     * Formats a plain-text subject and body and sends via SMTP.
+     *
+     * @param playerName the name of the player who joined
+     * @param serverName the name of the server they joined
+     * @throws IllegalStateException if recipients or SMTP server are not configured
+     * @throws MessagingException    if there is an error sending the email
+     */
+    @Override
+    public void notifyPlayerJoin(String playerName, String serverName) throws MessagingException {
+        String subject = playerName + " joined " + serverName + " server";
+        String body = playerName + " has joined the server at " + new java.util.Date();
+        sendNotification(subject, body);
     }
 
     /**

@@ -5,14 +5,12 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public final class Herald extends JavaPlugin implements Listener {
 
-    private boolean discordEnabled;
-    private String discordWebhookUrl;
-    private DiscordNotifier discordNotifier;
-    private EmailNotifier emailNotifier;
+    private final List<Notifier> notifiers = new ArrayList<>();
 
     @Override
     public void onEnable() {
@@ -34,13 +32,14 @@ public final class Herald extends JavaPlugin implements Listener {
     }
 
     private void loadConfiguration() {
-        // Load Discord settings (primary notification method)
-        discordEnabled = getConfig().getBoolean("discord.enabled", false);
-        discordWebhookUrl = getConfig().getString("discord.webhook-url");
+        notifiers.clear();
 
-        // Initialize Discord notifier if enabled
+        // Load Discord settings (primary notification method)
+        boolean discordEnabled = getConfig().getBoolean("discord.enabled", false);
+        String discordWebhookUrl = getConfig().getString("discord.webhook-url");
+
         if (discordEnabled && discordWebhookUrl != null && !discordWebhookUrl.isEmpty()) {
-            discordNotifier = new DiscordNotifier(discordWebhookUrl);
+            notifiers.add(new DiscordNotifier(discordWebhookUrl));
             getLogger().info("Discord notifications enabled");
         } else if (discordEnabled) {
             getLogger().warning("Discord notifications are enabled in config, but 'discord.webhook-url' is missing or empty. Discord notifications will be skipped.");
@@ -59,7 +58,7 @@ public final class Herald extends JavaPlugin implements Listener {
         boolean hasSmtp = smtpServer != null && !smtpServer.isEmpty();
 
         if (hasRecipients && hasSmtp) {
-            emailNotifier = new EmailNotifier(smtpServer, smtpPort, smtpUsername, smtpPassword, emailSender, useTLS, emailRecipients);
+            notifiers.add(new EmailNotifier(smtpServer, smtpPort, smtpUsername, smtpPassword, emailSender, useTLS, emailRecipients));
             getLogger().info("Email notifications enabled");
         } else if (hasRecipients || hasSmtp) {
             getLogger().warning("Email configuration is incomplete. Email notifications will be skipped.");
@@ -71,32 +70,15 @@ public final class Herald extends JavaPlugin implements Listener {
         String playerName = event.getPlayer().getName();
         String serverName = getServer().getName().isEmpty() ? "Minecraft" : getServer().getName();
 
-        // Send Discord notification first (primary notification method)
-        if (discordEnabled && discordNotifier != null) {
-            String discordMessage = "**" + playerName + "** joined the **" + serverName + "** server";
-
+        for (Notifier notifier : notifiers) {
             getServer().getScheduler().runTaskAsynchronously(this, () -> {
                 try {
-                    discordNotifier.sendMessage(discordMessage);
-                    getLogger().info("Discord notification sent successfully for player: " + playerName);
+                    notifier.notifyPlayerJoin(playerName, serverName);
+                    getLogger().info("Notification sent successfully for player: " + playerName
+                            + " via " + notifier.getClass().getSimpleName());
                 } catch (Exception e) {
-                    getLogger().severe("Failed to send Discord notification: " + e.getMessage());
-                    e.printStackTrace();
-                }
-            });
-        }
-
-        // Send email notification (secondary notification method)
-        if (emailNotifier != null) {
-            String subject = playerName + " joined " + serverName + " server";
-            String body = playerName + " has joined the server at " + new java.util.Date();
-
-            getServer().getScheduler().runTaskAsynchronously(this, () -> {
-                try {
-                    emailNotifier.sendNotification(subject, body);
-                    getLogger().info("Email notification sent successfully for player: " + playerName);
-                } catch (Exception e) {
-                    getLogger().severe("Failed to send email notification: " + e.getMessage());
+                    getLogger().severe("Failed to send notification via "
+                            + notifier.getClass().getSimpleName() + ": " + e.getMessage());
                     e.printStackTrace();
                 }
             });

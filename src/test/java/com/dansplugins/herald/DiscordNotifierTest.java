@@ -638,4 +638,103 @@ class DiscordNotifierTest {
             assertEquals(printable, escaped);
         }
     }
+
+    @Nested
+    @DisplayName("Notifier Interface Tests")
+    class NotifyPlayerJoinTests {
+
+        @Test
+        @DisplayName("DiscordNotifier should implement the Notifier interface")
+        void testImplementsNotifierInterface() {
+            DiscordNotifier notifier = new DiscordNotifier("https://discord.com/api/webhooks/123/abc");
+            assertInstanceOf(Notifier.class, notifier);
+        }
+
+        @Test
+        @DisplayName("notifyPlayerJoin should throw IllegalArgumentException when URL is null")
+        void testNotifyPlayerJoinWithNullUrlThrows() {
+            DiscordNotifier notifier = new DiscordNotifier(null);
+            assertThrows(IllegalArgumentException.class, () ->
+                    notifier.notifyPlayerJoin("Steve", "SurvivalServer"));
+        }
+
+        @Test
+        @DisplayName("notifyPlayerJoin should throw IllegalArgumentException when URL is empty")
+        void testNotifyPlayerJoinWithEmptyUrlThrows() {
+            DiscordNotifier notifier = new DiscordNotifier("");
+            assertThrows(IllegalArgumentException.class, () ->
+                    notifier.notifyPlayerJoin("Steve", "SurvivalServer"));
+        }
+
+        @Test
+        @DisplayName("notifyPlayerJoin should format message with Discord bold Markdown")
+        void testNotifyPlayerJoinFormatsMessageCorrectly() throws Exception {
+            final String[] capturedMessage = {null};
+            DiscordNotifier notifier = new DiscordNotifier("https://example.com") {
+                @Override
+                public void sendMessage(String content) {
+                    capturedMessage[0] = content;
+                }
+            };
+
+            notifier.notifyPlayerJoin("Steve", "MySurvivalServer");
+
+            assertEquals("**Steve** joined the **MySurvivalServer** server", capturedMessage[0]);
+        }
+
+        @Test
+        @DisplayName("notifyPlayerJoin should include both player name and server name")
+        void testNotifyPlayerJoinIncludesBothNames() throws Exception {
+            final String[] capturedMessage = {null};
+            DiscordNotifier notifier = new DiscordNotifier("https://example.com") {
+                @Override
+                public void sendMessage(String content) {
+                    capturedMessage[0] = content;
+                }
+            };
+
+            notifier.notifyPlayerJoin("Notch", "ClassicSMP");
+
+            assertNotNull(capturedMessage[0]);
+            assertTrue(capturedMessage[0].contains("Notch"));
+            assertTrue(capturedMessage[0].contains("ClassicSMP"));
+        }
+
+        @Test
+        @DisplayName("notifyPlayerJoin should use Discord bold markdown for player and server names")
+        void testNotifyPlayerJoinUsesBoldMarkdown() throws Exception {
+            final String[] capturedMessage = {null};
+            DiscordNotifier notifier = new DiscordNotifier("https://example.com") {
+                @Override
+                public void sendMessage(String content) {
+                    capturedMessage[0] = content;
+                }
+            };
+
+            notifier.notifyPlayerJoin("Alex", "Server");
+
+            assertNotNull(capturedMessage[0]);
+            assertTrue(capturedMessage[0].startsWith("**"), "Message should start with bold marker");
+            assertTrue(capturedMessage[0].contains("** joined the **"), "Both names should be bolded");
+            assertTrue(capturedMessage[0].endsWith("** server"), "Message should end with bolded server name suffix");
+        }
+
+        @ParameterizedTest
+        @CsvSource({"Steve,SurvivalServer", "Alex,CreativeWorld", "Player123,MyCoolSMP"})
+        @DisplayName("notifyPlayerJoin should correctly format various player/server name combinations")
+        void testNotifyPlayerJoinVariousNames(String playerName, String serverName) throws Exception {
+            final String[] capturedMessage = {null};
+            DiscordNotifier notifier = new DiscordNotifier("https://example.com") {
+                @Override
+                public void sendMessage(String content) {
+                    capturedMessage[0] = content;
+                }
+            };
+
+            notifier.notifyPlayerJoin(playerName, serverName);
+
+            String expected = "**" + playerName + "** joined the **" + serverName + "** server";
+            assertEquals(expected, capturedMessage[0]);
+        }
+    }
 }
