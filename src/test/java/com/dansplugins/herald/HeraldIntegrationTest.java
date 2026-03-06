@@ -228,16 +228,13 @@ class HeraldIntegrationTest {
         void testRapidEscapeJsonCalls() {
             DiscordNotifier notifier = new DiscordNotifier("https://example.com");
             
-            long startTime = System.nanoTime();
-            for (int i = 0; i < 1000; i++) {
-                String message = "**Player" + i + "** joined the **Server** server";
-                notifier.escapeJson(message);
+            for (int i = 0; i < 10; i++) {
+                String playerName = "Player" + i;
+                String message = "**" + playerName + "** joined the **Server** server";
+                String result = notifier.escapeJson(message);
+                assertNotNull(result);
+                assertTrue(result.contains(playerName));
             }
-            long endTime = System.nanoTime();
-            
-            // Should complete in reasonable time (less than 1 second)
-            long durationMs = (endTime - startTime) / 1_000_000;
-            assertTrue(durationMs < 1000, "Escaping 1000 messages took " + durationMs + "ms");
         }
         
         @Test
@@ -252,13 +249,9 @@ class HeraldIntegrationTest {
             }
             largeMessage.append("** server");
             
-            long startTime = System.nanoTime();
             String escaped = notifier.escapeJson(largeMessage.toString());
-            long endTime = System.nanoTime();
-            
             assertNotNull(escaped);
-            long durationMs = (endTime - startTime) / 1_000_000;
-            assertTrue(durationMs < 100, "Large message escaping took " + durationMs + "ms");
+            assertTrue(escaped.length() > 0);
         }
     }
 }

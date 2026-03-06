@@ -28,19 +28,25 @@ public class DiscordNotifier {
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
         connection.setRequestMethod("POST");
         connection.setRequestProperty("Content-Type", "application/json");
+        connection.setConnectTimeout(5000);  // 5 seconds connect timeout
+        connection.setReadTimeout(10000);    // 10 seconds read timeout
         connection.setDoOutput(true);
         
         // Create JSON payload with the message content
         String jsonPayload = String.format("{\"content\": \"%s\"}", escapeJson(content));
         
-        try (OutputStream os = connection.getOutputStream()) {
-            byte[] input = jsonPayload.getBytes(StandardCharsets.UTF_8);
-            os.write(input, 0, input.length);
-        }
-        
-        int responseCode = connection.getResponseCode();
-        if (responseCode < 200 || responseCode >= 300) {
-            throw new IOException("Discord webhook returned error code: " + responseCode);
+        try {
+            try (OutputStream os = connection.getOutputStream()) {
+                byte[] input = jsonPayload.getBytes(StandardCharsets.UTF_8);
+                os.write(input, 0, input.length);
+            }
+            
+            int responseCode = connection.getResponseCode();
+            if (responseCode < 200 || responseCode >= 300) {
+                throw new IOException("Discord webhook returned error code: " + responseCode);
+            }
+        } finally {
+            connection.disconnect();
         }
     }
     
@@ -53,10 +59,45 @@ public class DiscordNotifier {
         if (text == null) {
             return "";
         }
-        return text.replace("\\", "\\\\")
-                   .replace("\"", "\\\"")
-                   .replace("\n", "\\n")
-                   .replace("\r", "\\r")
-                   .replace("\t", "\\t");
+        StringBuilder sb = new StringBuilder(text.length());
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            switch (c) {
+                case '"':
+                    sb.append("\\\"");
+                    break;
+                case '\\':
+                    sb.append("\\\\");
+                    break;
+                case '\b':
+                    sb.append("\\b");
+                    break;
+                case '\f':
+                    sb.append("\\f");
+                    break;
+                case '\n':
+                    sb.append("\\n");
+                    break;
+                case '\r':
+                    sb.append("\\r");
+                    break;
+                case '\t':
+                    sb.append("\\t");
+                    break;
+                default:
+                    if (c < 0x20) {
+                        String hex = Integer.toHexString(c);
+                        sb.append("\\u00");
+                        if (hex.length() == 1) {
+                            sb.append('0');
+                        }
+                        sb.append(hex);
+                    } else {
+                        sb.append(c);
+                    }
+                    break;
+            }
+        }
+        return sb.toString();
     }
 }

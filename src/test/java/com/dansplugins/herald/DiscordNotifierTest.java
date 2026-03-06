@@ -287,6 +287,25 @@ class DiscordNotifierTest {
         }
         
         @Test
+        @DisplayName("escapeJson should escape backspace and form feed")
+        void testEscapeJsonWithBackspaceAndFormFeed() {
+            assertEquals("\\b", notifier.escapeJson("\b"));
+            assertEquals("\\f", notifier.escapeJson("\f"));
+        }
+        
+        @Test
+        @DisplayName("escapeJson should escape control characters below 0x20 as unicode")
+        void testEscapeJsonControlCharactersBelow0x20() {
+            // ASCII 0x01 (SOH) should become \u0001
+            String result = notifier.escapeJson("\u0001");
+            assertEquals("\\u0001", result);
+            // ASCII 0x02 (STX) should become \u0002
+            assertEquals("\\u0002", notifier.escapeJson("\u0002"));
+            // ASCII 0x1F (US) should become \u001f
+            assertEquals("\\u001f", notifier.escapeJson("\u001f"));
+        }
+        
+        @Test
         @DisplayName("escapeJson should handle consecutive special characters")
         void testEscapeJsonWithConsecutiveSpecialChars() {
             String input = "\"\"\\\\\n\n\t\t";
@@ -472,6 +491,8 @@ class DiscordNotifierTest {
             String input = "Test\0Null";
             String result = notifier.escapeJson(input);
             assertNotNull(result);
+            // Null byte (0x00) should be escaped as \u0000
+            assertTrue(result.contains("\\u0000"), "Null byte should be escaped as \\u0000");
         }
         
         @Test
@@ -481,6 +502,10 @@ class DiscordNotifierTest {
             String result = notifier.escapeJson(input);
             assertNotNull(result);
             assertTrue(result.contains("Test"));
+            // Control chars should be escaped as unicode sequences
+            assertTrue(result.contains("\\u0001"));
+            assertTrue(result.contains("\\u0002"));
+            assertTrue(result.contains("\\u0003"));
         }
     }
 

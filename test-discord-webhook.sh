@@ -3,8 +3,6 @@
 # Discord Webhook Test Script
 # This script allows you to test Discord webhook notifications without running a Minecraft server
 
-set -e
-
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -118,11 +116,30 @@ public class DiscordWebhookTest {
         if (text == null) {
             return "";
         }
-        return text.replace("\\", "\\\\")
-                   .replace("\"", "\\\"")
-                   .replace("\n", "\\n")
-                   .replace("\r", "\\r")
-                   .replace("\t", "\\t");
+        StringBuilder sb = new StringBuilder(text.length());
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            switch (c) {
+                case '"':  sb.append("\\\""); break;
+                case '\\': sb.append("\\\\"); break;
+                case '\b': sb.append("\\b");  break;
+                case '\f': sb.append("\\f");  break;
+                case '\n': sb.append("\\n");  break;
+                case '\r': sb.append("\\r");  break;
+                case '\t': sb.append("\\t");  break;
+                default:
+                    if (c < 0x20) {
+                        String hex = Integer.toHexString(c);
+                        sb.append("\\u00");
+                        if (hex.length() == 1) sb.append('0');
+                        sb.append(hex);
+                    } else {
+                        sb.append(c);
+                    }
+                    break;
+            }
+        }
+        return sb.toString();
     }
     
     private static String maskWebhookUrl(String url) {
@@ -142,9 +159,7 @@ public class DiscordWebhookTest {
 EOF
 
 echo -e "${YELLOW}Compiling test script...${NC}"
-javac "$JAVA_FILE"
-
-if [ $? -ne 0 ]; then
+if ! javac "$JAVA_FILE"; then
     echo -e "${RED}Compilation failed${NC}"
     rm -rf "$TEMP_DIR"
     exit 1
@@ -155,10 +170,12 @@ echo ""
 echo -e "${YELLOW}Sending test message...${NC}"
 echo ""
 
-# Run the test
+# Run the test, capturing exit code without 'set -e' interference
 cd "$TEMP_DIR"
+set +e
 java DiscordWebhookTest "$WEBHOOK_URL" "$PLAYER_NAME" "$SERVER_NAME"
 TEST_RESULT=$?
+set -e
 
 # Cleanup
 cd - > /dev/null
