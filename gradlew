@@ -210,16 +210,8 @@ DEFAULT_JVM_OPTS='"-Xmx64m" "-Xms64m"'
 
 set -- \
         "-Dorg.gradle.appname=$APP_BASE_NAME" \
+        -jar "$APP_HOME/gradle/wrapper/gradle-wrapper.jar" \
         "$@"
-
-# gradle-wrapper.jar is not distributed with this repository.
-# Fall back to a system-installed Gradle if available.
-if ! [ -f "$APP_HOME/gradle/wrapper/gradle-wrapper.jar" ]; then
-    if command -v gradle >/dev/null 2>&1; then
-        exec gradle "$@"
-    fi
-    die "Gradle wrapper JAR is not present and 'gradle' is not found on PATH. Please install Gradle and run 'gradle $@' manually."
-fi
 
 # Stop when "xargs" is not available.
 if ! command -v xargs >/dev/null 2>&1
@@ -253,4 +245,4 @@ eval "set -- $(
         tr '\n' ' '
     )" '"$@"'
 
-exec "$JAVACMD" -jar "$APP_HOME/gradle/wrapper/gradle-wrapper.jar" "$@"
+exec "$JAVACMD" "$@"

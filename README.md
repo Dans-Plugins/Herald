@@ -149,13 +149,26 @@ This setup is primarily intended for development and testing. For production use
 4. Consider adding spam protection measures
 
 ## Building from Source
-The project uses Gradle for building:
+The project uses the Gradle wrapper for building. This ensures all contributors use the same Gradle version without needing a system install.
 
-    ```shell script
-    gradle build
-    ```
+```shell
+# Build the plugin JAR
+./gradlew build
 
-This will create a fat JAR with all dependencies included.
+# Run unit tests
+./gradlew test
+
+# Build without running tests
+./gradlew build -x test
+```
+
+On Windows, use `gradlew.bat` instead:
+```cmd
+gradlew.bat build
+gradlew.bat test
+```
+
+The built JAR is located at `build/libs/`. The wrapper will automatically download the correct Gradle version on first use.
 
 ## Authors
 - Daniel McCoy Stephenson
