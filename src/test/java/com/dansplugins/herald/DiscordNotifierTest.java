@@ -545,4 +545,97 @@ class DiscordNotifierTest {
             assertTrue(escaped2.contains("B"));
         }
     }
+
+    @Nested
+    @DisplayName("JSON Payload Tests")
+    class JsonPayloadTests {
+
+        private DiscordNotifier notifier;
+
+        @BeforeEach
+        void setUp() {
+            notifier = new DiscordNotifier("https://example.com");
+        }
+
+        @Test
+        @DisplayName("Escaped content should produce valid JSON when embedded in payload")
+        void testEscapedContentProducesValidJsonStructure() {
+            String content = "Steve joined";
+            String escaped = notifier.escapeJson(content);
+            String payload = "{\"content\": \"" + escaped + "\"}";
+            // Basic structural check: starts with { and ends with }
+            assertTrue(payload.startsWith("{"));
+            assertTrue(payload.endsWith("}"));
+            assertTrue(payload.contains("\"content\""));
+        }
+
+        @Test
+        @DisplayName("Escaped quotes in content should not break JSON structure")
+        void testEscapedQuotesSafeInPayload() {
+            String content = "Player \"Steve\" joined";
+            String escaped = notifier.escapeJson(content);
+            String payload = "{\"content\": \"" + escaped + "\"}";
+            // The raw unescaped quote should not appear outside the value
+            assertFalse(escaped.contains("\"Steve\""));
+            assertTrue(escaped.contains("\\\"Steve\\\""));
+            assertTrue(payload.contains("\\\"Steve\\\""));
+        }
+
+        @Test
+        @DisplayName("Escaped backslash in content should not break JSON structure")
+        void testEscapedBackslashSafeInPayload() {
+            String content = "C:\\Users\\Steve joined";
+            String escaped = notifier.escapeJson(content);
+            // Raw single backslash should not appear (would break JSON)
+            assertFalse(escaped.contains("C:\\U"));
+            assertTrue(escaped.contains("C:\\\\U"));
+        }
+
+        @Test
+        @DisplayName("Newlines in content should be escaped so payload stays single-line")
+        void testNewlinesEscapedInPayload() {
+            String content = "Line1\nLine2";
+            String escaped = notifier.escapeJson(content);
+            assertFalse(escaped.contains("\n"), "Literal newline must not appear in escaped JSON string");
+            assertTrue(escaped.contains("\\n"));
+        }
+
+        @Test
+        @DisplayName("All named control escapes should not appear as literal characters")
+        void testAllNamedControlEscapesAreSafe() {
+            String content = "a\bb\fc\nd\re\tf";
+            String escaped = notifier.escapeJson(content);
+            assertFalse(escaped.contains("\b"), "Literal backspace must not appear");
+            assertFalse(escaped.contains("\f"), "Literal form-feed must not appear");
+            assertFalse(escaped.contains("\n"), "Literal newline must not appear");
+            assertFalse(escaped.contains("\r"), "Literal carriage-return must not appear");
+            assertFalse(escaped.contains("\t"), "Literal tab must not appear");
+            assertTrue(escaped.contains("\\b"));
+            assertTrue(escaped.contains("\\f"));
+            assertTrue(escaped.contains("\\n"));
+            assertTrue(escaped.contains("\\r"));
+            assertTrue(escaped.contains("\\t"));
+        }
+
+        @ParameterizedTest
+        @ValueSource(chars = {'\u0001', '\u0002', '\u0003', '\u0004', '\u0010', '\u001A', '\u001F'})
+        @DisplayName("Control characters below 0x20 should be escaped as \\uXXXX")
+        void testLowControlCharsEscapedAsUnicode(char controlChar) {
+            String input = "prefix" + controlChar + "suffix";
+            String escaped = notifier.escapeJson(input);
+            assertFalse(escaped.contains(String.valueOf(controlChar)),
+                    "Control char 0x" + Integer.toHexString(controlChar) + " must not appear literally");
+            assertTrue(escaped.contains("\\u00"),
+                    "Control char should be escaped as \\uXXXX");
+        }
+
+        @Test
+        @DisplayName("Normal printable ASCII should pass through unchanged")
+        void testPrintableAsciiPassesThrough() {
+            // All printable ASCII 0x20–0x7E except " and \
+            String printable = " !#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_`abcdefghijklmnopqrstuvwxyz{|}~";
+            String escaped = notifier.escapeJson(printable);
+            assertEquals(printable, escaped);
+        }
+    }
 }

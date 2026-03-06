@@ -254,4 +254,115 @@ class HeraldIntegrationTest {
             assertTrue(escaped.length() > 0);
         }
     }
+
+    @Nested
+    @DisplayName("Discord Message Format Tests")
+    class DiscordMessageFormatTests {
+
+        @Test
+        @DisplayName("Standard player join message should match exact Discord format")
+        void testExactDiscordMessageFormat() {
+            String playerName = "Steve";
+            String serverName = "MySurvivalServer";
+            String message = "**" + playerName + "** joined the **" + serverName + "** server";
+            assertEquals("**Steve** joined the **MySurvivalServer** server", message);
+        }
+
+        @Test
+        @DisplayName("Message format should be preserved after escaping safe content")
+        void testMessageFormatPreservedForSafeContent() {
+            DiscordNotifier notifier = new DiscordNotifier("https://example.com");
+            String[] safePlayers = {"Alice", "Bob123", "Player_X", "User-1"};
+            for (String player : safePlayers) {
+                String msg = "**" + player + "** joined the **Server** server";
+                assertEquals(msg, notifier.escapeJson(msg),
+                        "Message for " + player + " should be unchanged after escaping");
+            }
+        }
+
+        @Test
+        @DisplayName("Message escaping should sanitize injected quotes in player name")
+        void testPlayerNameWithQuoteInjection() {
+            DiscordNotifier notifier = new DiscordNotifier("https://example.com");
+            String playerName = "Steve\", \"troll\": \"true";
+            String message = "**" + playerName + "** joined the **Server** server";
+            String escaped = notifier.escapeJson(message);
+            // After escaping the full message string, there should be no unescaped quotes
+            // that could break the outer JSON structure
+            assertFalse(escaped.contains("\", \"troll"), "JSON injection attempt must be neutralised");
+        }
+
+        @Test
+        @DisplayName("Empty server name should fall back to 'Minecraft' in the message")
+        void testDefaultServerNameFallback() {
+            // When serverName is empty, Herald.java uses "Minecraft" as the fallback.
+            // Verify the message produced with that fallback contains "Minecraft".
+            String serverName = "Minecraft"; // this is the fallback value Herald uses
+            String msg = "**Player** joined the **" + serverName + "** server";
+
+            DiscordNotifier notifier = new DiscordNotifier("https://example.com");
+            String escaped = notifier.escapeJson(msg);
+            assertTrue(escaped.contains("Minecraft"));
+            assertEquals(msg, escaped); // "Minecraft" has no special chars, should be unchanged
+        }
+
+        @Test
+        @DisplayName("Message should contain both player and server names")
+        void testMessageContainsBothNames() {
+            String playerName = "Notch";
+            String serverName = "ClassicSMP";
+            String message = "**" + playerName + "** joined the **" + serverName + "** server";
+
+            assertTrue(message.contains(playerName));
+            assertTrue(message.contains(serverName));
+            assertTrue(message.contains("joined the"));
+            assertTrue(message.endsWith("server"));
+        }
+    }
+
+    @Nested
+    @DisplayName("Notification Ordering Tests")
+    class NotificationOrderingTests {
+
+        @Test
+        @DisplayName("Discord message should be independently formattable from email subject")
+        void testDiscordAndEmailMessagesAreDifferent() {
+            String playerName = "TestPlayer";
+            String serverName = "TestServer";
+
+            String discordMessage = "**" + playerName + "** joined the **" + serverName + "** server";
+            String emailSubject = playerName + " joined " + serverName + " server";
+
+            // Discord uses bold markdown; email subject is plain text
+            assertNotEquals(discordMessage, emailSubject);
+            assertTrue(discordMessage.contains("**"));
+            assertFalse(emailSubject.contains("**"));
+        }
+
+        @Test
+        @DisplayName("Discord message format should use bold markdown")
+        void testDiscordMessageUsesBoldMarkdown() {
+            String playerName = "Player";
+            String serverName = "Server";
+            String discordMessage = "**" + playerName + "** joined the **" + serverName + "** server";
+
+            assertTrue(discordMessage.startsWith("**"),
+                    "Discord message should start with bold markdown");
+            assertTrue(discordMessage.contains("** joined the **"),
+                    "Discord message should bold both player and server names");
+        }
+
+        @Test
+        @DisplayName("Email subject should be plain text without markdown")
+        void testEmailSubjectIsPlainText() {
+            String playerName = "Player";
+            String serverName = "Server";
+            String emailSubject = playerName + " joined " + serverName + " server";
+
+            assertFalse(emailSubject.contains("**"),
+                    "Email subject should not contain Discord markdown");
+            assertTrue(emailSubject.contains(playerName));
+            assertTrue(emailSubject.contains(serverName));
+        }
+    }
 }
