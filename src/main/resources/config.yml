@@ -4,6 +4,7 @@
 discord:
   enabled: false       # Set to true to enable Discord notifications
   webhook-url: ""      # Discord webhook URL for the channel you want to send notifications to
+  join-message: "⚔️ Hear ye, hear ye! **{player}** hath entered the realm of **{server}**! ⚔️"  # Supports {player} and {server} placeholders
 
 # Email Configuration (optional)
 # Email Recipients

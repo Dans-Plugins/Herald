@@ -34,6 +34,7 @@ Update your Herald `config.yml`:
 discord:
   enabled: false       # Set to true to enable Discord notifications
   webhook-url: ""      # Your Discord webhook URL
+  join-message: "⚔️ Hear ye, hear ye! **{player}** hath entered the realm of **{server}**! ⚔️"
 
 # Email Configuration (optional)
 email-recipients: []
@@ -59,9 +60,10 @@ Discord is the recommended way to receive player join notifications.
 4. In your Herald `config.yml`, set:
    - `discord.enabled: true`
    - `discord.webhook-url: "<your-webhook-url>"`
-5. Restart your Minecraft server or reload the plugin
+5. Optionally customize the join message by editing `discord.join-message`. Use `{player}` and `{server}` as placeholders.
+6. Restart your Minecraft server or reload the plugin
 
-Players will then see messages like `**Steve** joined the **My Server** server` in your Discord channel.
+By default, players will see medieval-themed messages like `⚔️ Hear ye, hear ye! **Steve** hath entered the realm of **My Server**! ⚔️` in your Discord channel. You can customize this message in the config.
 
 You can use Discord notifications alone, email alone, or both together.
 

@@ -15,21 +15,22 @@ class HeraldIntegrationTest {
     class MessageFormatTests {
         
         @Test
-        @DisplayName("Discord message format should match expected pattern")
+        @DisplayName("Default Discord message format should use medieval theme with player and server names")
         void testDiscordMessageFormat() {
             String playerName = "TestPlayer";
             String serverName = "TestServer";
-            String expectedFormat = "**" + playerName + "** joined the **" + serverName + "** server";
+            String expectedFormat = DiscordNotifier.DEFAULT_JOIN_MESSAGE
+                    .replace("{player}", playerName)
+                    .replace("{server}", serverName);
             
-            assertTrue(expectedFormat.startsWith("**"));
-            assertTrue(expectedFormat.contains("** joined the **"));
-            assertTrue(expectedFormat.endsWith("** server"));
+            assertTrue(expectedFormat.contains("**" + playerName + "**"));
+            assertTrue(expectedFormat.contains("**" + serverName + "**"));
         }
         
         @Test
         @DisplayName("Discord message should be properly escaped")
         void testDiscordMessageEscaping() {
-            DiscordNotifier notifier = new DiscordNotifier("https://example.com");
+            DiscordNotifier notifier = new DiscordNotifier("https://example.com", null);
             
             String playerName = "Player\"Test";
             String serverName = "Server\\Name";
@@ -59,14 +60,14 @@ class HeraldIntegrationTest {
         @DisplayName("Discord notifier should be created with valid URL")
         void testDiscordNotifierCreation() {
             String webhookUrl = "https://discord.com/api/webhooks/123456/abcdef";
-            DiscordNotifier notifier = new DiscordNotifier(webhookUrl);
+            DiscordNotifier notifier = new DiscordNotifier(webhookUrl, null);
             assertNotNull(notifier);
         }
         
         @Test
         @DisplayName("Discord notifier should handle null URL in constructor")
         void testDiscordNotifierWithNullUrl() {
-            DiscordNotifier notifier = new DiscordNotifier(null);
+            DiscordNotifier notifier = new DiscordNotifier(null, null);
             assertNotNull(notifier);
             
             Exception exception = assertThrows(IllegalArgumentException.class, () -> {
@@ -78,7 +79,7 @@ class HeraldIntegrationTest {
         @Test
         @DisplayName("Discord notifier should handle empty URL in constructor")
         void testDiscordNotifierWithEmptyUrl() {
-            DiscordNotifier notifier = new DiscordNotifier("");
+            DiscordNotifier notifier = new DiscordNotifier("", null);
             assertNotNull(notifier);
             
             Exception exception = assertThrows(IllegalArgumentException.class, () -> {
@@ -96,7 +97,7 @@ class HeraldIntegrationTest {
         @DisplayName("Message should handle standard player names")
         void testStandardPlayerNames() {
             String[] standardNames = {"Steve", "Alex", "Player123", "Cool_Player", "Player-Name"};
-            DiscordNotifier notifier = new DiscordNotifier("https://example.com");
+            DiscordNotifier notifier = new DiscordNotifier("https://example.com", null);
             
             for (String name : standardNames) {
                 String message = "**" + name + "** joined the **TestServer** server";
@@ -108,7 +109,7 @@ class HeraldIntegrationTest {
         @Test
         @DisplayName("Message should handle player names with special characters")
         void testPlayerNamesWithSpecialChars() {
-            DiscordNotifier notifier = new DiscordNotifier("https://example.com");
+            DiscordNotifier notifier = new DiscordNotifier("https://example.com", null);
             
             String[] specialNames = {"Player\"Quote", "Player\\Slash", "Player\nNewline"};
             for (String name : specialNames) {
@@ -123,7 +124,7 @@ class HeraldIntegrationTest {
         @Test
         @DisplayName("Message should handle Unicode player names")
         void testUnicodePlayerNames() {
-            DiscordNotifier notifier = new DiscordNotifier("https://example.com");
+            DiscordNotifier notifier = new DiscordNotifier("https://example.com", null);
             
             String[] unicodeNames = {"玩家", "プレイヤー", "игрок", "لاعب"};
             for (String name : unicodeNames) {
@@ -142,7 +143,7 @@ class HeraldIntegrationTest {
         @DisplayName("Message should handle standard server names")
         void testStandardServerNames() {
             String[] serverNames = {"Minecraft", "My Server", "Server123", "Cool-Server"};
-            DiscordNotifier notifier = new DiscordNotifier("https://example.com");
+            DiscordNotifier notifier = new DiscordNotifier("https://example.com", null);
             
             for (String serverName : serverNames) {
                 String message = "**Player** joined the **" + serverName + "** server";
@@ -164,7 +165,7 @@ class HeraldIntegrationTest {
         @Test
         @DisplayName("Message should handle server names with special characters")
         void testServerNamesWithSpecialChars() {
-            DiscordNotifier notifier = new DiscordNotifier("https://example.com");
+            DiscordNotifier notifier = new DiscordNotifier("https://example.com", null);
             
             String serverName = "Server \"Best\" \\Cool\\";
             String message = "**Player** joined the **" + serverName + "** server";
@@ -181,7 +182,7 @@ class HeraldIntegrationTest {
         @Test
         @DisplayName("Multiple messages should not interfere with each other")
         void testMultipleSimultaneousMessages() {
-            DiscordNotifier notifier = new DiscordNotifier("https://example.com");
+            DiscordNotifier notifier = new DiscordNotifier("https://example.com", null);
             
             String message1 = "**Player1** joined the **Server** server";
             String message2 = "**Player2** joined the **Server** server";
@@ -204,7 +205,7 @@ class HeraldIntegrationTest {
         @Test
         @DisplayName("Same player joining multiple times should create distinct messages")
         void testRepeatedPlayerJoins() {
-            DiscordNotifier notifier = new DiscordNotifier("https://example.com");
+            DiscordNotifier notifier = new DiscordNotifier("https://example.com", null);
             String playerName = "TestPlayer";
             
             String message1 = "**" + playerName + "** joined the **Server1** server";
@@ -226,7 +227,7 @@ class HeraldIntegrationTest {
         @Test
         @DisplayName("escapeJson should handle rapid successive calls")
         void testRapidEscapeJsonCalls() {
-            DiscordNotifier notifier = new DiscordNotifier("https://example.com");
+            DiscordNotifier notifier = new DiscordNotifier("https://example.com", null);
             
             for (int i = 0; i < 10; i++) {
                 String playerName = "Player" + i;
@@ -240,7 +241,7 @@ class HeraldIntegrationTest {
         @Test
         @DisplayName("escapeJson should handle large messages efficiently")
         void testLargeMessageEscaping() {
-            DiscordNotifier notifier = new DiscordNotifier("https://example.com");
+            DiscordNotifier notifier = new DiscordNotifier("https://example.com", null);
             
             // Create a large message (near Discord's 2000 char limit)
             StringBuilder largeMessage = new StringBuilder("**Player** joined the **");
@@ -260,18 +261,21 @@ class HeraldIntegrationTest {
     class DiscordMessageFormatTests {
 
         @Test
-        @DisplayName("Standard player join message should match exact Discord format")
+        @DisplayName("Default player join message should match medieval-themed format")
         void testExactDiscordMessageFormat() {
             String playerName = "Steve";
             String serverName = "MySurvivalServer";
-            String message = "**" + playerName + "** joined the **" + serverName + "** server";
-            assertEquals("**Steve** joined the **MySurvivalServer** server", message);
+            String message = DiscordNotifier.DEFAULT_JOIN_MESSAGE
+                    .replace("{player}", playerName)
+                    .replace("{server}", serverName);
+            assertTrue(message.contains("**Steve**"));
+            assertTrue(message.contains("**MySurvivalServer**"));
         }
 
         @Test
         @DisplayName("Message format should be preserved after escaping safe content")
         void testMessageFormatPreservedForSafeContent() {
-            DiscordNotifier notifier = new DiscordNotifier("https://example.com");
+            DiscordNotifier notifier = new DiscordNotifier("https://example.com", null);
             String[] safePlayers = {"Alice", "Bob123", "Player_X", "User-1"};
             for (String player : safePlayers) {
                 String msg = "**" + player + "** joined the **Server** server";
@@ -283,7 +287,7 @@ class HeraldIntegrationTest {
         @Test
         @DisplayName("Message escaping should sanitize injected quotes in player name")
         void testPlayerNameWithQuoteInjection() {
-            DiscordNotifier notifier = new DiscordNotifier("https://example.com");
+            DiscordNotifier notifier = new DiscordNotifier("https://example.com", null);
             String playerName = "Steve\", \"troll\": \"true";
             String message = "**" + playerName + "** joined the **Server** server";
             String escaped = notifier.escapeJson(message);
@@ -300,7 +304,7 @@ class HeraldIntegrationTest {
             String serverName = "Minecraft"; // this is the fallback value Herald uses
             String msg = "**Player** joined the **" + serverName + "** server";
 
-            DiscordNotifier notifier = new DiscordNotifier("https://example.com");
+            DiscordNotifier notifier = new DiscordNotifier("https://example.com", null);
             String escaped = notifier.escapeJson(msg);
             assertTrue(escaped.contains("Minecraft"));
             assertEquals(msg, escaped); // "Minecraft" has no special chars, should be unchanged
@@ -311,12 +315,12 @@ class HeraldIntegrationTest {
         void testMessageContainsBothNames() {
             String playerName = "Notch";
             String serverName = "ClassicSMP";
-            String message = "**" + playerName + "** joined the **" + serverName + "** server";
+            String message = DiscordNotifier.DEFAULT_JOIN_MESSAGE
+                    .replace("{player}", playerName)
+                    .replace("{server}", serverName);
 
             assertTrue(message.contains(playerName));
             assertTrue(message.contains(serverName));
-            assertTrue(message.contains("joined the"));
-            assertTrue(message.endsWith("server"));
         }
     }
 
@@ -330,7 +334,9 @@ class HeraldIntegrationTest {
             String playerName = "TestPlayer";
             String serverName = "TestServer";
 
-            String discordMessage = "**" + playerName + "** joined the **" + serverName + "** server";
+            String discordMessage = DiscordNotifier.DEFAULT_JOIN_MESSAGE
+                    .replace("{player}", playerName)
+                    .replace("{server}", serverName);
             String emailSubject = playerName + " joined " + serverName + " server";
 
             // Discord uses bold markdown; email subject is plain text
@@ -340,16 +346,18 @@ class HeraldIntegrationTest {
         }
 
         @Test
-        @DisplayName("Discord message format should use bold markdown")
+        @DisplayName("Default Discord message format should use bold markdown")
         void testDiscordMessageUsesBoldMarkdown() {
             String playerName = "Player";
             String serverName = "Server";
-            String discordMessage = "**" + playerName + "** joined the **" + serverName + "** server";
+            String discordMessage = DiscordNotifier.DEFAULT_JOIN_MESSAGE
+                    .replace("{player}", playerName)
+                    .replace("{server}", serverName);
 
-            assertTrue(discordMessage.startsWith("**"),
-                    "Discord message should start with bold markdown");
-            assertTrue(discordMessage.contains("** joined the **"),
-                    "Discord message should bold both player and server names");
+            assertTrue(discordMessage.contains("**" + playerName + "**"),
+                    "Discord message should bold the player name");
+            assertTrue(discordMessage.contains("**" + serverName + "**"),
+                    "Discord message should bold the server name");
         }
     }
 }

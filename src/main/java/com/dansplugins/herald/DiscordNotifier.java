@@ -8,15 +8,20 @@ import java.nio.charset.StandardCharsets;
 
 public class DiscordNotifier implements Notifier {
     
-    private final String webhookUrl;
+    static final String DEFAULT_JOIN_MESSAGE = "\u2694\uFE0F Hear ye, hear ye! **{player}** hath entered the realm of **{server}**! \u2694\uFE0F";
     
-    public DiscordNotifier(String webhookUrl) {
+    private final String webhookUrl;
+    private final String joinMessage;
+    
+    public DiscordNotifier(String webhookUrl, String joinMessage) {
         this.webhookUrl = webhookUrl;
+        this.joinMessage = (joinMessage != null && !joinMessage.isEmpty()) ? joinMessage : DEFAULT_JOIN_MESSAGE;
     }
     
     /**
      * Send a player-join notification to Discord.
-     * Formats the message using Discord Markdown bold syntax and sends it via webhook.
+     * Formats the message using the configured join message template and sends it via webhook.
+     * The template supports {player} and {server} placeholders.
      *
      * @param playerName the name of the player who joined
      * @param serverName the name of the server they joined
@@ -24,7 +29,7 @@ public class DiscordNotifier implements Notifier {
      */
     @Override
     public void notifyPlayerJoin(String playerName, String serverName) throws IOException {
-        String content = "**" + playerName + "** joined the **" + serverName + "** server";
+        String content = joinMessage.replace("{player}", playerName).replace("{server}", serverName);
         sendMessage(content);
     }
 
