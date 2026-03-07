@@ -49,21 +49,30 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Build plugin JAR
-        run: ./gradlew build
+        run: gradle build
 
       - name: Locate built JAR
         id: locate-jar
         run: |
-          # Use find to reliably locate the built JAR, excluding any
-          # *-sources / *-javadoc JARs.
-          JAR_FILE=$(find build/libs -maxdepth 1 -name '*.jar' \
+          # Locate candidate JARs, excluding *-sources / *-javadoc JARs,
+          # and ensure there is exactly one to avoid deploying the wrong artifact.
+          JAR_FILES=$(find build/libs -maxdepth 1 -type f -name '*.jar' \
             ! -name '*-sources.jar' \
-            ! -name '*-javadoc.jar' \
-            -print -quit)
-          if [ -z "${JAR_FILE}" ]; then
+            ! -name '*-javadoc.jar' | sort)
+
+          JAR_COUNT=$(printf '%s\n' "${JAR_FILES}" | grep -c . || true)
+          if [ "${JAR_COUNT}" -eq 0 ]; then
             echo "❌ No JAR found in build/libs/"
             exit 1
           fi
+
+          if [ "${JAR_COUNT}" -ne 1 ]; then
+            echo "❌ Expected exactly one deployable JAR in build/libs/, but found ${JAR_COUNT}:"
+            printf '%s\n' "${JAR_FILES}"
+            exit 1
+          fi
+
+          JAR_FILE="${JAR_FILES}"
           echo "jar_file=${JAR_FILE}" >> "$GITHUB_OUTPUT"
           echo "✅ Found JAR: ${JAR_FILE}"
 
@@ -76,6 +85,16 @@ jobs:
           PLUGIN_JAR_NAME="${{ vars.PLUGIN_JAR_NAME }}"
           if [ -z "${PLUGIN_JAR_NAME}" ]; then
             echo "❌ PLUGIN_JAR_NAME variable is not set"
+            exit 1
+          fi
+
+          if [ -z "${DEPLOY_URL}" ]; then
+            echo "❌ OMCSI_DEPLOY_URL secret is not set or is empty"
+            exit 1
+          fi
+
+          if [ -z "${DEPLOY_TOKEN}" ]; then
+            echo "❌ OMCSI_DEPLOY_TOKEN secret is not set or is empty"
             exit 1
           fi
 
