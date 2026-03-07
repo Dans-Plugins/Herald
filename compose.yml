@@ -1,0 +1,52 @@
+services:
+  testmcserver:
+    build: .
+    image: herald-test-mc-server
+    container_name: herald-test-mc-server
+    ports:
+      - "25565:25565"
+    volumes:
+      - type: bind
+        source: ./testmcserver # note: might need to create this directory before running
+        target: /testmcserver
+    environment:
+      - MINECRAFT_VERSION=${MINECRAFT_VERSION}
+      - OPERATOR_UUID=${OPERATOR_UUID}
+      - OPERATOR_NAME=${OPERATOR_NAME}
+      - OPERATOR_LEVEL=${OPERATOR_LEVEL}
+      - OVERWRITE_EXISTING_SERVER=${OVERWRITE_EXISTING_SERVER}
+    networks:
+      - mail-network
+
+  # Primary mail server (Postfix)
+  mailserver:
+    image: boky/postfix:latest
+    container_name: minecraft-mailserver
+    ports:
+      - "25:25"       # SMTP port
+      - "587:587"     # Submission port with TLS
+    environment:
+      - POSTFIX_MAIL_NAME=minecraft-mail.local
+      - PERMIT_DOCKER=host
+      # Configure Postfix to relay all outbound mail through MailHog
+      - RELAYHOST=mailhog:1025
+      - ALLOWED_SENDER_DOMAINS=minecraft-mail.local
+    networks:
+      - mail-network
+    restart: unless-stopped
+    depends_on:
+      - mailhog
+
+  # Email catcher & viewer
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: minecraft-mailhog
+    ports:
+      - "8025:8025"   # Web interface
+    networks:
+      - mail-network
+    restart: unless-stopped
+
+networks:
+  mail-network:
+    driver: bridge

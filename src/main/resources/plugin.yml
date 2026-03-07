@@ -1,0 +1,6 @@
+name: Herald
+version: '${version}'
+main: com.dansplugins.herald.Herald
+api-version: '1.16'
+authors: ["Daniel McCoy Stephenson"]
+description: Sends Discord and email notifications when players join the server
