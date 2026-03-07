@@ -1,5 +1,9 @@
 # Herald Configuration
 
+# Server name used in notification messages (replaces {server} placeholder).
+# If left empty, defaults to "Minecraft".
+server-name: ""
+
 # Discord Configuration (flagship feature)
 discord:
   enabled: false       # Set to true to enable Discord notifications

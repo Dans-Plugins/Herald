@@ -30,6 +30,10 @@ Update your Herald `config.yml`:
 ```yaml
 # Herald Configuration
 
+# Server name used in notification messages (replaces {server} placeholder).
+# If left empty, defaults to "Minecraft".
+server-name: ""
+
 # Discord Configuration (flagship feature)
 discord:
   enabled: false       # Set to true to enable Discord notifications
@@ -70,6 +74,7 @@ Discord is the recommended way to receive player join notifications.
 4. In your Herald `config.yml`, set:
    - `discord.enabled: true`
    - `discord.webhook-url: "<your-webhook-url>"`
+   - `server-name: "My Awesome Server"` (optional — sets the name used in `{server}` placeholders; defaults to `"Minecraft"`)
 5. Optionally customize the join messages by editing the `discord.join-messages` list. Use `{player}` and `{server}` as placeholders. A random message is chosen each time a player joins.
 6. Restart your Minecraft server or reload the plugin
 

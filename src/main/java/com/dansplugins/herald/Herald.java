@@ -69,7 +69,8 @@ public final class Herald extends JavaPlugin implements Listener {
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
         String playerName = event.getPlayer().getName();
-        String serverName = getServer().getName().isEmpty() ? "Minecraft" : getServer().getName();
+        String configServerName = getConfig().getString("server-name", "");
+        String serverName = (configServerName != null && !configServerName.isEmpty()) ? configServerName : "Minecraft";
 
         getServer().getScheduler().runTaskAsynchronously(this, () -> {
             for (Notifier notifier : notifiers) {
