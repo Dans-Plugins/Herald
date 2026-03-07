@@ -37,9 +37,10 @@ public final class Herald extends JavaPlugin implements Listener {
         // Load Discord settings (primary notification method)
         boolean discordEnabled = getConfig().getBoolean("discord.enabled", false);
         String discordWebhookUrl = getConfig().getString("discord.webhook-url");
+        List<String> discordJoinMessages = getConfig().getStringList("discord.join-messages");
 
         if (discordEnabled && discordWebhookUrl != null && !discordWebhookUrl.isEmpty()) {
-            notifiers.add(new DiscordNotifier(discordWebhookUrl));
+            notifiers.add(new DiscordNotifier(discordWebhookUrl, discordJoinMessages));
             getLogger().info("Discord notifications enabled");
         } else if (discordEnabled) {
             getLogger().warning("Discord notifications are enabled in config, but 'discord.webhook-url' is missing or empty. Discord notifications will be skipped.");
@@ -68,7 +69,8 @@ public final class Herald extends JavaPlugin implements Listener {
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
         String playerName = event.getPlayer().getName();
-        String serverName = getServer().getName().isEmpty() ? "Minecraft" : getServer().getName();
+        String configServerName = getConfig().getString("server-name", "");
+        String serverName = (configServerName != null && !configServerName.isEmpty()) ? configServerName : "Minecraft";
 
         getServer().getScheduler().runTaskAsynchronously(this, () -> {
             for (Notifier notifier : notifiers) {

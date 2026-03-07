@@ -10,6 +10,10 @@ import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.CsvSource;
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.util.Collections;
+import java.util.List;
+import java.util.Random;
+
 import java.io.IOException;
 import java.net.MalformedURLException;
 
@@ -22,21 +26,21 @@ class DiscordNotifierTest {
     @DisplayName("Constructor should accept valid webhook URL")
     void testConstructorWithValidUrl() {
         String webhookUrl = "https://discord.com/api/webhooks/123456/abcdef";
-        DiscordNotifier notifier = new DiscordNotifier(webhookUrl);
+        DiscordNotifier notifier = new DiscordNotifier(webhookUrl, null);
         assertNotNull(notifier);
     }
 
     @Test
     @DisplayName("Constructor should accept null webhook URL")
     void testConstructorWithNullUrl() {
-        DiscordNotifier notifier = new DiscordNotifier(null);
+        DiscordNotifier notifier = new DiscordNotifier(null, null);
         assertNotNull(notifier);
     }
 
     @Test
     @DisplayName("sendMessage should throw IllegalArgumentException for null webhook URL")
     void testSendMessageWithNullUrl() {
-        DiscordNotifier notifier = new DiscordNotifier(null);
+        DiscordNotifier notifier = new DiscordNotifier(null, null);
         assertThrows(IllegalArgumentException.class, () -> {
             notifier.sendMessage("test message");
         });
@@ -45,7 +49,7 @@ class DiscordNotifierTest {
     @Test
     @DisplayName("sendMessage should throw IllegalArgumentException for empty webhook URL")
     void testSendMessageWithEmptyUrl() {
-        DiscordNotifier notifier = new DiscordNotifier("");
+        DiscordNotifier notifier = new DiscordNotifier("", null);
         assertThrows(IllegalArgumentException.class, () -> {
             notifier.sendMessage("test message");
         });
@@ -54,7 +58,7 @@ class DiscordNotifierTest {
     @Test
     @DisplayName("escapeJson should handle null input")
     void testEscapeJsonWithNull() {
-        DiscordNotifier notifier = new DiscordNotifier("https://example.com");
+        DiscordNotifier notifier = new DiscordNotifier("https://example.com", null);
         String result = notifier.escapeJson(null);
         assertEquals("", result);
     }
@@ -62,7 +66,7 @@ class DiscordNotifierTest {
     @Test
     @DisplayName("escapeJson should handle empty string")
     void testEscapeJsonWithEmptyString() {
-        DiscordNotifier notifier = new DiscordNotifier("https://example.com");
+        DiscordNotifier notifier = new DiscordNotifier("https://example.com", null);
         String result = notifier.escapeJson("");
         assertEquals("", result);
     }
@@ -70,7 +74,7 @@ class DiscordNotifierTest {
     @Test
     @DisplayName("escapeJson should not modify simple text")
     void testEscapeJsonWithSimpleText() {
-        DiscordNotifier notifier = new DiscordNotifier("https://example.com");
+        DiscordNotifier notifier = new DiscordNotifier("https://example.com", null);
         String input = "Hello World";
         String result = notifier.escapeJson(input);
         assertEquals("Hello World", result);
@@ -79,7 +83,7 @@ class DiscordNotifierTest {
     @Test
     @DisplayName("escapeJson should escape double quotes")
     void testEscapeJsonWithDoubleQuotes() {
-        DiscordNotifier notifier = new DiscordNotifier("https://example.com");
+        DiscordNotifier notifier = new DiscordNotifier("https://example.com", null);
         String input = "He said \"Hello\"";
         String result = notifier.escapeJson(input);
         assertEquals("He said \\\"Hello\\\"", result);
@@ -88,7 +92,7 @@ class DiscordNotifierTest {
     @Test
     @DisplayName("escapeJson should escape backslashes")
     void testEscapeJsonWithBackslashes() {
-        DiscordNotifier notifier = new DiscordNotifier("https://example.com");
+        DiscordNotifier notifier = new DiscordNotifier("https://example.com", null);
         String input = "Path: C:\\Users\\Test";
         String result = notifier.escapeJson(input);
         assertEquals("Path: C:\\\\Users\\\\Test", result);
@@ -97,7 +101,7 @@ class DiscordNotifierTest {
     @Test
     @DisplayName("escapeJson should escape newlines")
     void testEscapeJsonWithNewlines() {
-        DiscordNotifier notifier = new DiscordNotifier("https://example.com");
+        DiscordNotifier notifier = new DiscordNotifier("https://example.com", null);
         String input = "Line1\nLine2";
         String result = notifier.escapeJson(input);
         assertEquals("Line1\\nLine2", result);
@@ -106,7 +110,7 @@ class DiscordNotifierTest {
     @Test
     @DisplayName("escapeJson should escape carriage returns")
     void testEscapeJsonWithCarriageReturns() {
-        DiscordNotifier notifier = new DiscordNotifier("https://example.com");
+        DiscordNotifier notifier = new DiscordNotifier("https://example.com", null);
         String input = "Line1\rLine2";
         String result = notifier.escapeJson(input);
         assertEquals("Line1\\rLine2", result);
@@ -115,7 +119,7 @@ class DiscordNotifierTest {
     @Test
     @DisplayName("escapeJson should escape tabs")
     void testEscapeJsonWithTabs() {
-        DiscordNotifier notifier = new DiscordNotifier("https://example.com");
+        DiscordNotifier notifier = new DiscordNotifier("https://example.com", null);
         String input = "Col1\tCol2";
         String result = notifier.escapeJson(input);
         assertEquals("Col1\\tCol2", result);
@@ -124,7 +128,7 @@ class DiscordNotifierTest {
     @Test
     @DisplayName("escapeJson should handle multiple special characters")
     void testEscapeJsonWithMultipleSpecialChars() {
-        DiscordNotifier notifier = new DiscordNotifier("https://example.com");
+        DiscordNotifier notifier = new DiscordNotifier("https://example.com", null);
         String input = "Text with \"quotes\", \nnewlines, \ttabs, and \\backslashes";
         String result = notifier.escapeJson(input);
         assertEquals("Text with \\\"quotes\\\", \\nnewlines, \\ttabs, and \\\\backslashes", result);
@@ -133,7 +137,7 @@ class DiscordNotifierTest {
     @Test
     @DisplayName("escapeJson should properly escape Discord message format")
     void testEscapeJsonWithDiscordMessageFormat() {
-        DiscordNotifier notifier = new DiscordNotifier("https://example.com");
+        DiscordNotifier notifier = new DiscordNotifier("https://example.com", null);
         String playerName = "Steve";
         String serverName = "My Server";
         String message = "**" + playerName + "** joined the **" + serverName + "** server";
@@ -144,7 +148,7 @@ class DiscordNotifierTest {
     @Test
     @DisplayName("escapeJson should handle backslash before quote correctly")
     void testEscapeJsonWithBackslashBeforeQuote() {
-        DiscordNotifier notifier = new DiscordNotifier("https://example.com");
+        DiscordNotifier notifier = new DiscordNotifier("https://example.com", null);
         String input = "Test\\\"Quote";
         String result = notifier.escapeJson(input);
         // Backslash is escaped first, then quote is escaped
@@ -154,7 +158,7 @@ class DiscordNotifierTest {
     @Test
     @DisplayName("escapeJson should handle empty markdown formatting")
     void testEscapeJsonWithMarkdown() {
-        DiscordNotifier notifier = new DiscordNotifier("https://example.com");
+        DiscordNotifier notifier = new DiscordNotifier("https://example.com", null);
         String input = "**bold** *italic* __underline__ ~~strikethrough~~";
         String result = notifier.escapeJson(input);
         assertEquals("**bold** *italic* __underline__ ~~strikethrough~~", result);
@@ -163,7 +167,7 @@ class DiscordNotifierTest {
     @Test
     @DisplayName("escapeJson should handle Unicode characters")
     void testEscapeJsonWithUnicodeCharacters() {
-        DiscordNotifier notifier = new DiscordNotifier("https://example.com");
+        DiscordNotifier notifier = new DiscordNotifier("https://example.com", null);
         String input = "Hello 世界 🌍";
         String result = notifier.escapeJson(input);
         assertEquals("Hello 世界 🌍", result);
@@ -172,7 +176,7 @@ class DiscordNotifierTest {
     @Test
     @DisplayName("escapeJson should handle special Discord mentions")
     void testEscapeJsonWithDiscordMentions() {
-        DiscordNotifier notifier = new DiscordNotifier("https://example.com");
+        DiscordNotifier notifier = new DiscordNotifier("https://example.com", null);
         String input = "<@123456789> <#987654321> @everyone @here";
         String result = notifier.escapeJson(input);
         assertEquals("<@123456789> <#987654321> @everyone @here", result);
@@ -187,16 +191,16 @@ class DiscordNotifierTest {
         @DisplayName("Constructor should store webhook URL")
         void testConstructorStoresUrl() {
             String webhookUrl = "https://discord.com/api/webhooks/123456/abcdef";
-            DiscordNotifier notifier = new DiscordNotifier(webhookUrl);
+            DiscordNotifier notifier = new DiscordNotifier(webhookUrl, null);
             assertNotNull(notifier);
         }
         
         @Test
         @DisplayName("Constructor should accept various URL formats")
         void testConstructorWithVariousUrlFormats() {
-            assertDoesNotThrow(() -> new DiscordNotifier("https://discord.com/api/webhooks/123/abc"));
-            assertDoesNotThrow(() -> new DiscordNotifier("http://localhost:8080/webhook"));
-            assertDoesNotThrow(() -> new DiscordNotifier("https://example.com"));
+            assertDoesNotThrow(() -> new DiscordNotifier("https://discord.com/api/webhooks/123/abc", null));
+            assertDoesNotThrow(() -> new DiscordNotifier("http://localhost:8080/webhook", null));
+            assertDoesNotThrow(() -> new DiscordNotifier("https://example.com", null));
         }
     }
 
@@ -208,7 +212,7 @@ class DiscordNotifierTest {
         @NullAndEmptySource
         @DisplayName("sendMessage should reject null or empty webhook URLs")
         void testSendMessageWithInvalidUrls(String invalidUrl) {
-            DiscordNotifier notifier = new DiscordNotifier(invalidUrl);
+            DiscordNotifier notifier = new DiscordNotifier(invalidUrl, null);
             Exception exception = assertThrows(IllegalArgumentException.class, () -> {
                 notifier.sendMessage("test message");
             });
@@ -224,7 +228,7 @@ class DiscordNotifierTest {
         })
         @DisplayName("sendMessage should handle malformed URLs")
         void testSendMessageWithMalformedUrls(String malformedUrl) {
-            DiscordNotifier notifier = new DiscordNotifier(malformedUrl);
+            DiscordNotifier notifier = new DiscordNotifier(malformedUrl, null);
             assertThrows(Exception.class, () -> {
                 notifier.sendMessage("test message");
             });
@@ -239,7 +243,7 @@ class DiscordNotifierTest {
         
         @BeforeEach
         void setUp() {
-            notifier = new DiscordNotifier("https://example.com");
+            notifier = new DiscordNotifier("https://example.com", null);
         }
         
         @ParameterizedTest
@@ -341,7 +345,7 @@ class DiscordNotifierTest {
         
         @BeforeEach
         void setUp() {
-            notifier = new DiscordNotifier("https://example.com");
+            notifier = new DiscordNotifier("https://example.com", null);
         }
         
         @Test
@@ -412,7 +416,7 @@ class DiscordNotifierTest {
         
         @BeforeEach
         void setUp() {
-            notifier = new DiscordNotifier("https://example.com");
+            notifier = new DiscordNotifier("https://example.com", null);
         }
         
         @Test
@@ -471,7 +475,7 @@ class DiscordNotifierTest {
         
         @BeforeEach
         void setUp() {
-            notifier = new DiscordNotifier("https://example.com");
+            notifier = new DiscordNotifier("https://example.com", null);
         }
         
         @Test
@@ -524,7 +528,7 @@ class DiscordNotifierTest {
         @DisplayName("Constructor and escapeJson should work together")
         void testConstructorAndEscapeJsonIntegration() {
             String webhookUrl = "https://discord.com/api/webhooks/123/abc";
-            DiscordNotifier notifier = new DiscordNotifier(webhookUrl);
+            DiscordNotifier notifier = new DiscordNotifier(webhookUrl, null);
             
             String playerName = "TestPlayer";
             String serverName = "TestServer";
@@ -539,7 +543,7 @@ class DiscordNotifierTest {
         @Test
         @DisplayName("Multiple messages should be escaped independently")
         void testMultipleMessagesIndependently() {
-            DiscordNotifier notifier = new DiscordNotifier("https://example.com");
+            DiscordNotifier notifier = new DiscordNotifier("https://example.com", null);
             
             String message1 = "Player \"A\" joined";
             String message2 = "Player \"B\" joined";
@@ -561,7 +565,7 @@ class DiscordNotifierTest {
 
         @BeforeEach
         void setUp() {
-            notifier = new DiscordNotifier("https://example.com");
+            notifier = new DiscordNotifier("https://example.com", null);
         }
 
         @Test
@@ -653,14 +657,14 @@ class DiscordNotifierTest {
         @Test
         @DisplayName("DiscordNotifier should implement the Notifier interface")
         void testImplementsNotifierInterface() {
-            DiscordNotifier notifier = new DiscordNotifier("https://discord.com/api/webhooks/123/abc");
+            DiscordNotifier notifier = new DiscordNotifier("https://discord.com/api/webhooks/123/abc", null);
             assertInstanceOf(Notifier.class, notifier);
         }
 
         @Test
         @DisplayName("notifyPlayerJoin should throw IllegalArgumentException when URL is null")
         void testNotifyPlayerJoinWithNullUrlThrows() {
-            DiscordNotifier notifier = new DiscordNotifier(null);
+            DiscordNotifier notifier = new DiscordNotifier(null, null);
             assertThrows(IllegalArgumentException.class, () ->
                     notifier.notifyPlayerJoin("Steve", "SurvivalServer"));
         }
@@ -668,32 +672,38 @@ class DiscordNotifierTest {
         @Test
         @DisplayName("notifyPlayerJoin should throw IllegalArgumentException when URL is empty")
         void testNotifyPlayerJoinWithEmptyUrlThrows() {
-            DiscordNotifier notifier = new DiscordNotifier("");
+            DiscordNotifier notifier = new DiscordNotifier("", null);
             assertThrows(IllegalArgumentException.class, () ->
                     notifier.notifyPlayerJoin("Steve", "SurvivalServer"));
         }
 
         @Test
-        @DisplayName("notifyPlayerJoin should format message with Discord bold Markdown")
+        @DisplayName("notifyPlayerJoin should format message using one of the default medieval-themed templates")
         void testNotifyPlayerJoinFormatsMessageCorrectly() throws Exception {
             final String[] capturedMessage = {null};
-            DiscordNotifier notifier = new DiscordNotifier("https://example.com") {
+            Random seededRandom = new Random(42);
+            DiscordNotifier notifier = new DiscordNotifier("https://example.com", null, seededRandom) {
                 @Override
                 public void sendMessage(String content) {
                     capturedMessage[0] = content;
                 }
             };
 
+            int index = new Random(42).nextInt(DiscordNotifier.DEFAULT_JOIN_MESSAGES.size());
+            String expected = DiscordNotifier.DEFAULT_JOIN_MESSAGES.get(index)
+                    .replace("{player}", "Steve")
+                    .replace("{server}", "MySurvivalServer");
+
             notifier.notifyPlayerJoin("Steve", "MySurvivalServer");
 
-            assertEquals("**Steve** joined the **MySurvivalServer** server", capturedMessage[0]);
+            assertEquals(expected, capturedMessage[0]);
         }
 
         @Test
         @DisplayName("notifyPlayerJoin should include both player name and server name")
         void testNotifyPlayerJoinIncludesBothNames() throws Exception {
             final String[] capturedMessage = {null};
-            DiscordNotifier notifier = new DiscordNotifier("https://example.com") {
+            DiscordNotifier notifier = new DiscordNotifier("https://example.com", null) {
                 @Override
                 public void sendMessage(String content) {
                     capturedMessage[0] = content;
@@ -711,7 +721,7 @@ class DiscordNotifierTest {
         @DisplayName("notifyPlayerJoin should use Discord bold markdown for player and server names")
         void testNotifyPlayerJoinUsesBoldMarkdown() throws Exception {
             final String[] capturedMessage = {null};
-            DiscordNotifier notifier = new DiscordNotifier("https://example.com") {
+            DiscordNotifier notifier = new DiscordNotifier("https://example.com", null) {
                 @Override
                 public void sendMessage(String content) {
                     capturedMessage[0] = content;
@@ -721,9 +731,8 @@ class DiscordNotifierTest {
             notifier.notifyPlayerJoin("Alex", "Server");
 
             assertNotNull(capturedMessage[0]);
-            assertTrue(capturedMessage[0].startsWith("**"), "Message should start with bold marker");
-            assertTrue(capturedMessage[0].contains("** joined the **"), "Both names should be bolded");
-            assertTrue(capturedMessage[0].endsWith("** server"), "Message should end with bolded server name suffix");
+            assertTrue(capturedMessage[0].contains("**Alex**"), "Player name should be bolded");
+            assertTrue(capturedMessage[0].contains("**Server**"), "Server name should be bolded");
         }
 
         @ParameterizedTest
@@ -731,7 +740,8 @@ class DiscordNotifierTest {
         @DisplayName("notifyPlayerJoin should correctly format various player/server name combinations")
         void testNotifyPlayerJoinVariousNames(String playerName, String serverName) throws Exception {
             final String[] capturedMessage = {null};
-            DiscordNotifier notifier = new DiscordNotifier("https://example.com") {
+            Random seededRandom = new Random(0);
+            DiscordNotifier notifier = new DiscordNotifier("https://example.com", null, seededRandom) {
                 @Override
                 public void sendMessage(String content) {
                     capturedMessage[0] = content;
@@ -740,8 +750,114 @@ class DiscordNotifierTest {
 
             notifier.notifyPlayerJoin(playerName, serverName);
 
-            String expected = "**" + playerName + "** joined the **" + serverName + "** server";
-            assertEquals(expected, capturedMessage[0]);
+            assertNotNull(capturedMessage[0]);
+            assertTrue(capturedMessage[0].contains(playerName));
+            assertTrue(capturedMessage[0].contains(serverName));
+        }
+
+        @Test
+        @DisplayName("notifyPlayerJoin should use custom join message when provided")
+        void testNotifyPlayerJoinWithCustomMessage() throws Exception {
+            final String[] capturedMessage = {null};
+            String customMessage = "Welcome, **{player}**, to the **{server}** kingdom!";
+            DiscordNotifier notifier = new DiscordNotifier("https://example.com", List.of(customMessage)) {
+                @Override
+                public void sendMessage(String content) {
+                    capturedMessage[0] = content;
+                }
+            };
+
+            notifier.notifyPlayerJoin("Steve", "MySurvivalServer");
+
+            assertEquals("Welcome, **Steve**, to the **MySurvivalServer** kingdom!", capturedMessage[0]);
+        }
+
+        @Test
+        @DisplayName("notifyPlayerJoin should fall back to defaults when join messages list is null")
+        void testNotifyPlayerJoinFallsBackToDefaultWhenNull() throws Exception {
+            final String[] capturedMessage = {null};
+            DiscordNotifier notifier = new DiscordNotifier("https://example.com", null) {
+                @Override
+                public void sendMessage(String content) {
+                    capturedMessage[0] = content;
+                }
+            };
+
+            notifier.notifyPlayerJoin("Steve", "Server");
+
+            assertNotNull(capturedMessage[0]);
+            assertTrue(capturedMessage[0].contains("Steve"));
+            assertTrue(capturedMessage[0].contains("Server"));
+        }
+
+        @Test
+        @DisplayName("notifyPlayerJoin should fall back to defaults when join messages list is empty")
+        void testNotifyPlayerJoinFallsBackToDefaultWhenEmpty() throws Exception {
+            final String[] capturedMessage = {null};
+            DiscordNotifier notifier = new DiscordNotifier("https://example.com", Collections.emptyList()) {
+                @Override
+                public void sendMessage(String content) {
+                    capturedMessage[0] = content;
+                }
+            };
+
+            notifier.notifyPlayerJoin("Steve", "Server");
+
+            assertNotNull(capturedMessage[0]);
+            assertTrue(capturedMessage[0].contains("Steve"));
+            assertTrue(capturedMessage[0].contains("Server"));
+        }
+
+        @Test
+        @DisplayName("notifyPlayerJoin should support message without placeholders")
+        void testNotifyPlayerJoinWithNoPlaceholders() throws Exception {
+            final String[] capturedMessage = {null};
+            DiscordNotifier notifier = new DiscordNotifier("https://example.com", List.of("A new adventurer has arrived!")) {
+                @Override
+                public void sendMessage(String content) {
+                    capturedMessage[0] = content;
+                }
+            };
+
+            notifier.notifyPlayerJoin("Steve", "Server");
+
+            assertEquals("A new adventurer has arrived!", capturedMessage[0]);
+        }
+
+        @Test
+        @DisplayName("notifyPlayerJoin should pick random messages from the list")
+        void testNotifyPlayerJoinPicksRandomMessages() throws Exception {
+            List<String> messages = List.of("Message A: {player}", "Message B: {player}", "Message C: {player}");
+            java.util.Set<String> seen = new java.util.HashSet<>();
+
+            for (int seed = 0; seed < 100; seed++) {
+                final String[] capturedMessage = {null};
+                DiscordNotifier notifier = new DiscordNotifier("https://example.com", messages, new Random(seed)) {
+                    @Override
+                    public void sendMessage(String content) {
+                        capturedMessage[0] = content;
+                    }
+                };
+                notifier.notifyPlayerJoin("Steve", "Server");
+                seen.add(capturedMessage[0]);
+            }
+
+            assertTrue(seen.size() > 1, "Multiple different messages should be selected across different seeds");
+        }
+
+        @Test
+        @DisplayName("Default join messages list should contain exactly 10 messages")
+        void testDefaultJoinMessagesCount() {
+            assertEquals(10, DiscordNotifier.DEFAULT_JOIN_MESSAGES.size());
+        }
+
+        @Test
+        @DisplayName("All default join messages should contain {player} and {server} placeholders")
+        void testDefaultJoinMessagesContainPlaceholders() {
+            for (String msg : DiscordNotifier.DEFAULT_JOIN_MESSAGES) {
+                assertTrue(msg.contains("{player}"), "Message should contain {player}: " + msg);
+                assertTrue(msg.contains("{server}"), "Message should contain {server}: " + msg);
+            }
         }
     }
 }

@@ -30,10 +30,25 @@ Update your Herald `config.yml`:
 ```yaml
 # Herald Configuration
 
+# Server name used in notification messages (replaces {server} placeholder).
+# If left empty, defaults to "Minecraft".
+server-name: ""
+
 # Discord Configuration (flagship feature)
 discord:
   enabled: false       # Set to true to enable Discord notifications
   webhook-url: ""      # Your Discord webhook URL
+  join-messages:       # Messages picked at random on player join
+    - "⚔️ Hear ye, hear ye! **{player}** hath entered the realm of **{server}**! ⚔️"
+    - "🏰 The gates of **{server}** open wide for **{player}**! Welcome, brave soul!"
+    - "📜 By royal decree, **{player}** hath been granted passage into **{server}**!"
+    - "🗡️ A new champion approaches! **{player}** rides into **{server}**!"
+    - "🌟 The bards shall sing of this day! **{player}** hath arrived in **{server}**!"
+    - "👑 All hail **{player}**, who now graces the lands of **{server}**!"
+    - "🔥 The torches flicker as **{player}** strides into **{server}**!"
+    - "🎺 Sound the trumpets! **{player}** hath joined the kingdom of **{server}**!"
+    - "🛡️ The defenders of **{server}** welcome **{player}** to their ranks!"
+    - "✨ By the stars above, **{player}** hath made their presence known in **{server}**!"
 
 # Email Configuration (optional)
 email-recipients: []
@@ -59,9 +74,11 @@ Discord is the recommended way to receive player join notifications.
 4. In your Herald `config.yml`, set:
    - `discord.enabled: true`
    - `discord.webhook-url: "<your-webhook-url>"`
-5. Restart your Minecraft server or reload the plugin
+   - `server-name: "My Awesome Server"` (optional — sets the name used in `{server}` placeholders; defaults to `"Minecraft"`)
+5. Optionally customize the join messages by editing the `discord.join-messages` list. Use `{player}` and `{server}` as placeholders. A random message is chosen each time a player joins.
+6. Restart your Minecraft server or reload the plugin
 
-Players will then see messages like `**Steve** joined the **My Server** server` in your Discord channel.
+By default, Herald ships with 10 medieval-themed messages that are chosen at random, such as `⚔️ Hear ye, hear ye! **Steve** hath entered the realm of **My Server**! ⚔️`. You can add, remove, or replace messages in the config.
 
 You can use Discord notifications alone, email alone, or both together.
 

@@ -1,9 +1,24 @@
 # Herald Configuration
 
+# Server name used in notification messages (replaces {server} placeholder).
+# If left empty, defaults to "Minecraft".
+server-name: ""
+
 # Discord Configuration (flagship feature)
 discord:
   enabled: false       # Set to true to enable Discord notifications
   webhook-url: ""      # Discord webhook URL for the channel you want to send notifications to
+  join-messages:       # List of join messages picked at random. Supports {player} and {server} placeholders.
+    - "⚔️ Hear ye, hear ye! **{player}** hath entered the realm of **{server}**! ⚔️"
+    - "🏰 The gates of **{server}** open wide for **{player}**! Welcome, brave soul!"
+    - "📜 By royal decree, **{player}** hath been granted passage into **{server}**!"
+    - "🗡️ A new champion approaches! **{player}** rides into **{server}**!"
+    - "🌟 The bards shall sing of this day! **{player}** hath arrived in **{server}**!"
+    - "👑 All hail **{player}**, who now graces the lands of **{server}**!"
+    - "🔥 The torches flicker as **{player}** strides into **{server}**!"
+    - "🎺 Sound the trumpets! **{player}** hath joined the kingdom of **{server}**!"
+    - "🛡️ The defenders of **{server}** welcome **{player}** to their ranks!"
+    - "✨ By the stars above, **{player}** hath made their presence known in **{server}**!"
 
 # Email Configuration (optional)
 # Email Recipients
