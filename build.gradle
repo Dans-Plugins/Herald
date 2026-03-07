@@ -21,11 +21,19 @@ repositories {
 dependencies {
     compileOnly("org.spigotmc:spigot-api:1.21.4-R0.1-SNAPSHOT")
     implementation 'com.sun.mail:jakarta.mail:2.0.1'
+    
+    // Test dependencies
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
 tasks {
     runServer {
         minecraftVersion("1.21")
+    }
+    
+    test {
+        useJUnitPlatform()
     }
 }
 
