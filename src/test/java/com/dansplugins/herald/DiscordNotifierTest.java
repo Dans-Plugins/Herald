@@ -10,6 +10,10 @@ import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.CsvSource;
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.util.Collections;
+import java.util.List;
+import java.util.Random;
+
 import java.io.IOException;
 import java.net.MalformedURLException;
 
@@ -674,21 +678,24 @@ class DiscordNotifierTest {
         }
 
         @Test
-        @DisplayName("notifyPlayerJoin should format message using the default medieval-themed template")
+        @DisplayName("notifyPlayerJoin should format message using one of the default medieval-themed templates")
         void testNotifyPlayerJoinFormatsMessageCorrectly() throws Exception {
             final String[] capturedMessage = {null};
-            DiscordNotifier notifier = new DiscordNotifier("https://example.com", null) {
+            Random seededRandom = new Random(42);
+            DiscordNotifier notifier = new DiscordNotifier("https://example.com", null, seededRandom) {
                 @Override
                 public void sendMessage(String content) {
                     capturedMessage[0] = content;
                 }
             };
 
-            notifier.notifyPlayerJoin("Steve", "MySurvivalServer");
-
-            String expected = DiscordNotifier.DEFAULT_JOIN_MESSAGE
+            int index = new Random(42).nextInt(DiscordNotifier.DEFAULT_JOIN_MESSAGES.size());
+            String expected = DiscordNotifier.DEFAULT_JOIN_MESSAGES.get(index)
                     .replace("{player}", "Steve")
                     .replace("{server}", "MySurvivalServer");
+
+            notifier.notifyPlayerJoin("Steve", "MySurvivalServer");
+
             assertEquals(expected, capturedMessage[0]);
         }
 
@@ -733,7 +740,8 @@ class DiscordNotifierTest {
         @DisplayName("notifyPlayerJoin should correctly format various player/server name combinations")
         void testNotifyPlayerJoinVariousNames(String playerName, String serverName) throws Exception {
             final String[] capturedMessage = {null};
-            DiscordNotifier notifier = new DiscordNotifier("https://example.com", null) {
+            Random seededRandom = new Random(0);
+            DiscordNotifier notifier = new DiscordNotifier("https://example.com", null, seededRandom) {
                 @Override
                 public void sendMessage(String content) {
                     capturedMessage[0] = content;
@@ -742,10 +750,9 @@ class DiscordNotifierTest {
 
             notifier.notifyPlayerJoin(playerName, serverName);
 
-            String expected = DiscordNotifier.DEFAULT_JOIN_MESSAGE
-                    .replace("{player}", playerName)
-                    .replace("{server}", serverName);
-            assertEquals(expected, capturedMessage[0]);
+            assertNotNull(capturedMessage[0]);
+            assertTrue(capturedMessage[0].contains(playerName));
+            assertTrue(capturedMessage[0].contains(serverName));
         }
 
         @Test
@@ -753,7 +760,7 @@ class DiscordNotifierTest {
         void testNotifyPlayerJoinWithCustomMessage() throws Exception {
             final String[] capturedMessage = {null};
             String customMessage = "Welcome, **{player}**, to the **{server}** kingdom!";
-            DiscordNotifier notifier = new DiscordNotifier("https://example.com", customMessage) {
+            DiscordNotifier notifier = new DiscordNotifier("https://example.com", List.of(customMessage)) {
                 @Override
                 public void sendMessage(String content) {
                     capturedMessage[0] = content;
@@ -766,7 +773,7 @@ class DiscordNotifierTest {
         }
 
         @Test
-        @DisplayName("notifyPlayerJoin should fall back to default when join message is null")
+        @DisplayName("notifyPlayerJoin should fall back to defaults when join messages list is null")
         void testNotifyPlayerJoinFallsBackToDefaultWhenNull() throws Exception {
             final String[] capturedMessage = {null};
             DiscordNotifier notifier = new DiscordNotifier("https://example.com", null) {
@@ -778,17 +785,16 @@ class DiscordNotifierTest {
 
             notifier.notifyPlayerJoin("Steve", "Server");
 
-            String expected = DiscordNotifier.DEFAULT_JOIN_MESSAGE
-                    .replace("{player}", "Steve")
-                    .replace("{server}", "Server");
-            assertEquals(expected, capturedMessage[0]);
+            assertNotNull(capturedMessage[0]);
+            assertTrue(capturedMessage[0].contains("Steve"));
+            assertTrue(capturedMessage[0].contains("Server"));
         }
 
         @Test
-        @DisplayName("notifyPlayerJoin should fall back to default when join message is empty")
+        @DisplayName("notifyPlayerJoin should fall back to defaults when join messages list is empty")
         void testNotifyPlayerJoinFallsBackToDefaultWhenEmpty() throws Exception {
             final String[] capturedMessage = {null};
-            DiscordNotifier notifier = new DiscordNotifier("https://example.com", "") {
+            DiscordNotifier notifier = new DiscordNotifier("https://example.com", Collections.emptyList()) {
                 @Override
                 public void sendMessage(String content) {
                     capturedMessage[0] = content;
@@ -797,17 +803,16 @@ class DiscordNotifierTest {
 
             notifier.notifyPlayerJoin("Steve", "Server");
 
-            String expected = DiscordNotifier.DEFAULT_JOIN_MESSAGE
-                    .replace("{player}", "Steve")
-                    .replace("{server}", "Server");
-            assertEquals(expected, capturedMessage[0]);
+            assertNotNull(capturedMessage[0]);
+            assertTrue(capturedMessage[0].contains("Steve"));
+            assertTrue(capturedMessage[0].contains("Server"));
         }
 
         @Test
         @DisplayName("notifyPlayerJoin should support message without placeholders")
         void testNotifyPlayerJoinWithNoPlaceholders() throws Exception {
             final String[] capturedMessage = {null};
-            DiscordNotifier notifier = new DiscordNotifier("https://example.com", "A new adventurer has arrived!") {
+            DiscordNotifier notifier = new DiscordNotifier("https://example.com", List.of("A new adventurer has arrived!")) {
                 @Override
                 public void sendMessage(String content) {
                     capturedMessage[0] = content;
@@ -817,6 +822,42 @@ class DiscordNotifierTest {
             notifier.notifyPlayerJoin("Steve", "Server");
 
             assertEquals("A new adventurer has arrived!", capturedMessage[0]);
+        }
+
+        @Test
+        @DisplayName("notifyPlayerJoin should pick random messages from the list")
+        void testNotifyPlayerJoinPicksRandomMessages() throws Exception {
+            List<String> messages = List.of("Message A: {player}", "Message B: {player}", "Message C: {player}");
+            java.util.Set<String> seen = new java.util.HashSet<>();
+
+            for (int seed = 0; seed < 100; seed++) {
+                final String[] capturedMessage = {null};
+                DiscordNotifier notifier = new DiscordNotifier("https://example.com", messages, new Random(seed)) {
+                    @Override
+                    public void sendMessage(String content) {
+                        capturedMessage[0] = content;
+                    }
+                };
+                notifier.notifyPlayerJoin("Steve", "Server");
+                seen.add(capturedMessage[0]);
+            }
+
+            assertTrue(seen.size() > 1, "Multiple different messages should be selected across different seeds");
+        }
+
+        @Test
+        @DisplayName("Default join messages list should contain exactly 10 messages")
+        void testDefaultJoinMessagesCount() {
+            assertEquals(10, DiscordNotifier.DEFAULT_JOIN_MESSAGES.size());
+        }
+
+        @Test
+        @DisplayName("All default join messages should contain {player} and {server} placeholders")
+        void testDefaultJoinMessagesContainPlaceholders() {
+            for (String msg : DiscordNotifier.DEFAULT_JOIN_MESSAGES) {
+                assertTrue(msg.contains("{player}"), "Message should contain {player}: " + msg);
+                assertTrue(msg.contains("{server}"), "Message should contain {server}: " + msg);
+            }
         }
     }
 }

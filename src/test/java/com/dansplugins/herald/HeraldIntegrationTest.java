@@ -19,12 +19,11 @@ class HeraldIntegrationTest {
         void testDiscordMessageFormat() {
             String playerName = "TestPlayer";
             String serverName = "TestServer";
-            String expectedFormat = DiscordNotifier.DEFAULT_JOIN_MESSAGE
-                    .replace("{player}", playerName)
-                    .replace("{server}", serverName);
-            
-            assertTrue(expectedFormat.contains("**" + playerName + "**"));
-            assertTrue(expectedFormat.contains("**" + serverName + "**"));
+            for (String template : DiscordNotifier.DEFAULT_JOIN_MESSAGES) {
+                String formatted = template.replace("{player}", playerName).replace("{server}", serverName);
+                assertTrue(formatted.contains("**" + playerName + "**"));
+                assertTrue(formatted.contains("**" + serverName + "**"));
+            }
         }
         
         @Test
@@ -261,15 +260,17 @@ class HeraldIntegrationTest {
     class DiscordMessageFormatTests {
 
         @Test
-        @DisplayName("Default player join message should match medieval-themed format")
+        @DisplayName("Default player join messages should all use medieval-themed format")
         void testExactDiscordMessageFormat() {
             String playerName = "Steve";
             String serverName = "MySurvivalServer";
-            String message = DiscordNotifier.DEFAULT_JOIN_MESSAGE
-                    .replace("{player}", playerName)
-                    .replace("{server}", serverName);
-            assertTrue(message.contains("**Steve**"));
-            assertTrue(message.contains("**MySurvivalServer**"));
+            for (String template : DiscordNotifier.DEFAULT_JOIN_MESSAGES) {
+                String message = template
+                        .replace("{player}", playerName)
+                        .replace("{server}", serverName);
+                assertTrue(message.contains("**Steve**"));
+                assertTrue(message.contains("**MySurvivalServer**"));
+            }
         }
 
         @Test
@@ -311,16 +312,17 @@ class HeraldIntegrationTest {
         }
 
         @Test
-        @DisplayName("Message should contain both player and server names")
+        @DisplayName("All default messages should contain both player and server names")
         void testMessageContainsBothNames() {
             String playerName = "Notch";
             String serverName = "ClassicSMP";
-            String message = DiscordNotifier.DEFAULT_JOIN_MESSAGE
-                    .replace("{player}", playerName)
-                    .replace("{server}", serverName);
-
-            assertTrue(message.contains(playerName));
-            assertTrue(message.contains(serverName));
+            for (String template : DiscordNotifier.DEFAULT_JOIN_MESSAGES) {
+                String message = template
+                        .replace("{player}", playerName)
+                        .replace("{server}", serverName);
+                assertTrue(message.contains(playerName));
+                assertTrue(message.contains(serverName));
+            }
         }
     }
 
@@ -334,7 +336,7 @@ class HeraldIntegrationTest {
             String playerName = "TestPlayer";
             String serverName = "TestServer";
 
-            String discordMessage = DiscordNotifier.DEFAULT_JOIN_MESSAGE
+            String discordMessage = DiscordNotifier.DEFAULT_JOIN_MESSAGES.get(0)
                     .replace("{player}", playerName)
                     .replace("{server}", serverName);
             String emailSubject = playerName + " joined " + serverName + " server";
@@ -346,18 +348,20 @@ class HeraldIntegrationTest {
         }
 
         @Test
-        @DisplayName("Default Discord message format should use bold markdown")
+        @DisplayName("Default Discord message formats should use bold markdown")
         void testDiscordMessageUsesBoldMarkdown() {
             String playerName = "Player";
             String serverName = "Server";
-            String discordMessage = DiscordNotifier.DEFAULT_JOIN_MESSAGE
-                    .replace("{player}", playerName)
-                    .replace("{server}", serverName);
+            for (String template : DiscordNotifier.DEFAULT_JOIN_MESSAGES) {
+                String discordMessage = template
+                        .replace("{player}", playerName)
+                        .replace("{server}", serverName);
 
-            assertTrue(discordMessage.contains("**" + playerName + "**"),
-                    "Discord message should bold the player name");
-            assertTrue(discordMessage.contains("**" + serverName + "**"),
-                    "Discord message should bold the server name");
+                assertTrue(discordMessage.contains("**" + playerName + "**"),
+                        "Discord message should bold the player name: " + discordMessage);
+                assertTrue(discordMessage.contains("**" + serverName + "**"),
+                        "Discord message should bold the server name: " + discordMessage);
+            }
         }
     }
 }

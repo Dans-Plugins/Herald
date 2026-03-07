@@ -34,7 +34,17 @@ Update your Herald `config.yml`:
 discord:
   enabled: false       # Set to true to enable Discord notifications
   webhook-url: ""      # Your Discord webhook URL
-  join-message: "⚔️ Hear ye, hear ye! **{player}** hath entered the realm of **{server}**! ⚔️"
+  join-messages:       # Messages picked at random on player join
+    - "⚔️ Hear ye, hear ye! **{player}** hath entered the realm of **{server}**! ⚔️"
+    - "🏰 The gates of **{server}** open wide for **{player}**! Welcome, brave soul!"
+    - "📜 By royal decree, **{player}** hath been granted passage into **{server}**!"
+    - "🗡️ A new champion approaches! **{player}** rides into **{server}**!"
+    - "🌟 The bards shall sing of this day! **{player}** hath arrived in **{server}**!"
+    - "👑 All hail **{player}**, who now graces the lands of **{server}**!"
+    - "🔥 The torches flicker as **{player}** strides into **{server}**!"
+    - "🎺 Sound the trumpets! **{player}** hath joined the kingdom of **{server}**!"
+    - "🛡️ The defenders of **{server}** welcome **{player}** to their ranks!"
+    - "✨ By the stars above, **{player}** hath made their presence known in **{server}**!"
 
 # Email Configuration (optional)
 email-recipients: []
@@ -60,10 +70,10 @@ Discord is the recommended way to receive player join notifications.
 4. In your Herald `config.yml`, set:
    - `discord.enabled: true`
    - `discord.webhook-url: "<your-webhook-url>"`
-5. Optionally customize the join message by editing `discord.join-message`. Use `{player}` and `{server}` as placeholders.
+5. Optionally customize the join messages by editing the `discord.join-messages` list. Use `{player}` and `{server}` as placeholders. A random message is chosen each time a player joins.
 6. Restart your Minecraft server or reload the plugin
 
-By default, players will see medieval-themed messages like `⚔️ Hear ye, hear ye! **Steve** hath entered the realm of **My Server**! ⚔️` in your Discord channel. You can customize this message in the config.
+By default, Herald ships with 10 medieval-themed messages that are chosen at random, such as `⚔️ Hear ye, hear ye! **Steve** hath entered the realm of **My Server**! ⚔️`. You can add, remove, or replace messages in the config.
 
 You can use Discord notifications alone, email alone, or both together.
 

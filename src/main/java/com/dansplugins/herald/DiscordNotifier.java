@@ -5,23 +5,46 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Random;
 
 public class DiscordNotifier implements Notifier {
     
-    static final String DEFAULT_JOIN_MESSAGE = "\u2694\uFE0F Hear ye, hear ye! **{player}** hath entered the realm of **{server}**! \u2694\uFE0F";
+    static final List<String> DEFAULT_JOIN_MESSAGES = List.of(
+            "\u2694\uFE0F Hear ye, hear ye! **{player}** hath entered the realm of **{server}**! \u2694\uFE0F",
+            "\uD83C\uDFF0 The gates of **{server}** open wide for **{player}**! Welcome, brave soul!",
+            "\uD83D\uDCDC By royal decree, **{player}** hath been granted passage into **{server}**!",
+            "\uD83D\uDDE1\uFE0F A new champion approaches! **{player}** rides into **{server}**!",
+            "\uD83C\uDF1F The bards shall sing of this day! **{player}** hath arrived in **{server}**!",
+            "\uD83D\uDC51 All hail **{player}**, who now graces the lands of **{server}**!",
+            "\uD83D\uDD25 The torches flicker as **{player}** strides into **{server}**!",
+            "\uD83C\uDFBA Sound the trumpets! **{player}** hath joined the kingdom of **{server}**!",
+            "\uD83D\uDEE1\uFE0F The defenders of **{server}** welcome **{player}** to their ranks!",
+            "\u2728 By the stars above, **{player}** hath made their presence known in **{server}**!"
+    );
     
     private final String webhookUrl;
-    private final String joinMessage;
+    private final List<String> joinMessages;
+    private final Random random;
     
-    public DiscordNotifier(String webhookUrl, String joinMessage) {
+    public DiscordNotifier(String webhookUrl, List<String> joinMessages) {
+        this(webhookUrl, joinMessages, new Random());
+    }
+
+    DiscordNotifier(String webhookUrl, List<String> joinMessages, Random random) {
         this.webhookUrl = webhookUrl;
-        this.joinMessage = (joinMessage != null && !joinMessage.isEmpty()) ? joinMessage : DEFAULT_JOIN_MESSAGE;
+        this.joinMessages = (joinMessages != null && !joinMessages.isEmpty())
+                ? Collections.unmodifiableList(new ArrayList<>(joinMessages))
+                : DEFAULT_JOIN_MESSAGES;
+        this.random = random;
     }
     
     /**
      * Send a player-join notification to Discord.
-     * Formats the message using the configured join message template and sends it via webhook.
-     * The template supports {player} and {server} placeholders.
+     * Picks a random message from the configured templates and sends it via webhook.
+     * Each template supports {player} and {server} placeholders.
      *
      * @param playerName the name of the player who joined
      * @param serverName the name of the server they joined
@@ -29,7 +52,8 @@ public class DiscordNotifier implements Notifier {
      */
     @Override
     public void notifyPlayerJoin(String playerName, String serverName) throws IOException {
-        String content = joinMessage.replace("{player}", playerName).replace("{server}", serverName);
+        String template = joinMessages.get(random.nextInt(joinMessages.size()));
+        String content = template.replace("{player}", playerName).replace("{server}", serverName);
         sendMessage(content);
     }
 

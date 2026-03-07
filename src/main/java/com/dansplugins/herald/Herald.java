@@ -37,10 +37,10 @@ public final class Herald extends JavaPlugin implements Listener {
         // Load Discord settings (primary notification method)
         boolean discordEnabled = getConfig().getBoolean("discord.enabled", false);
         String discordWebhookUrl = getConfig().getString("discord.webhook-url");
-        String discordJoinMessage = getConfig().getString("discord.join-message");
+        List<String> discordJoinMessages = getConfig().getStringList("discord.join-messages");
 
         if (discordEnabled && discordWebhookUrl != null && !discordWebhookUrl.isEmpty()) {
-            notifiers.add(new DiscordNotifier(discordWebhookUrl, discordJoinMessage));
+            notifiers.add(new DiscordNotifier(discordWebhookUrl, discordJoinMessages));
             getLogger().info("Discord notifications enabled");
         } else if (discordEnabled) {
             getLogger().warning("Discord notifications are enabled in config, but 'discord.webhook-url' is missing or empty. Discord notifications will be skipped.");
