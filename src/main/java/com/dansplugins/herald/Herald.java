@@ -11,6 +11,7 @@ import java.util.List;
 public final class Herald extends JavaPlugin implements Listener {
 
     private final List<Notifier> notifiers = new ArrayList<>();
+    private String serverName = "Minecraft";
 
     @Override
     public void onEnable() {
@@ -33,6 +34,10 @@ public final class Herald extends JavaPlugin implements Listener {
 
     private void loadConfiguration() {
         notifiers.clear();
+
+        // Cache server name with fallback
+        String configServerName = getConfig().getString("server-name", "");
+        serverName = (configServerName != null && !configServerName.isEmpty()) ? configServerName : "Minecraft";
 
         // Load Discord settings (primary notification method)
         boolean discordEnabled = getConfig().getBoolean("discord.enabled", false);
@@ -69,8 +74,6 @@ public final class Herald extends JavaPlugin implements Listener {
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
         String playerName = event.getPlayer().getName();
-        String configServerName = getConfig().getString("server-name", "");
-        String serverName = (configServerName != null && !configServerName.isEmpty()) ? configServerName : "Minecraft";
 
         getServer().getScheduler().runTaskAsynchronously(this, () -> {
             for (Notifier notifier : notifiers) {
