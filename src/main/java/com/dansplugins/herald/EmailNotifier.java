@@ -42,7 +42,7 @@ public class EmailNotifier implements Notifier {
     @Override
     public void notifyPlayerJoin(String playerName, String serverName) throws MessagingException {
         String subject = playerName + " joined " + serverName + " server";
-        String body = playerName + " has joined the server at " + new java.util.Date();
+        String body = playerName + " has joined " + serverName + " at " + new java.util.Date();
         sendNotification(subject, body);
     }
 

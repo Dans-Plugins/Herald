@@ -259,13 +259,15 @@ class EmailNotifierTest {
         }
 
         @Test
-        @DisplayName("Email body should include player name and indicate join event")
+        @DisplayName("Email body should include player name, server name, and indicate join event")
         void testEmailBodyContainsPlayerName() {
             String playerName = "Steve";
-            String body = playerName + " has joined the server at " + new java.util.Date();
+            String serverName = "MySurvivalServer";
+            String body = playerName + " has joined " + serverName + " at " + new java.util.Date();
 
             assertTrue(body.startsWith(playerName), "Body should start with the player name");
-            assertTrue(body.contains("has joined the server at"), "Body should describe the join event");
+            assertTrue(body.contains(serverName), "Body should include the server name");
+            assertTrue(body.contains("has joined"), "Body should describe the join event");
         }
 
         @ParameterizedTest
@@ -375,8 +377,8 @@ class EmailNotifierTest {
 
             assertNotNull(capturedBody[0]);
             assertTrue(capturedBody[0].startsWith("Alex"), "Body should start with player name");
-            assertTrue(capturedBody[0].contains("has joined the server at"),
-                    "Body should describe the join event");
+            assertTrue(capturedBody[0].contains("CreativeWorld"), "Body should include the server name");
+            assertTrue(capturedBody[0].contains("has joined"), "Body should describe the join event");
         }
 
         @Test
