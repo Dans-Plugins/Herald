@@ -21,3 +21,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Configurable server name for notification messages
 - Docker Compose setup for local mail-server testing
 - Discord webhook test scripts (Bash and Python)
+
+[Unreleased]: https://github.com/Dans-Plugins/Herald/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/Dans-Plugins/Herald/releases/tag/v1.0.0
