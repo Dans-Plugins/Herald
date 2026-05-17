@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [Unreleased]
+
+### Fixed
+
+- Email notification body now includes the server name (e.g. `Steve has joined MySurvivalServer at <date>`) instead of the generic `"the server"`.
+- `server-name` is now cached at plugin load time rather than re-read from config on every player join event.
+
 ## [1.0.0]
 
 ### Added
@@ -14,3 +21,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Configurable server name for notification messages
 - Docker Compose setup for local mail-server testing
 - Discord webhook test scripts (Bash and Python)
+
+[Unreleased]: https://github.com/Dans-Plugins/Herald/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/Dans-Plugins/Herald/releases/tag/v1.0.0
