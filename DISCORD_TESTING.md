@@ -52,14 +52,14 @@ python3 test-discord-webhook.py https://discord.com/api/webhooks/123456/abcdef S
 
 ## What the Scripts Do
 
-These scripts simulate the Herald plugin's Discord notification by:
+These scripts verify that a webhook URL is reachable and correctly configured by:
 
 1. Taking a Discord webhook URL as input
-2. Formatting a message in the same way the plugin does: `**PlayerName** joined the **ServerName** server`
+2. Formatting a simple test message: `**PlayerName** joined the **ServerName** server`
 3. Sending the message to Discord via HTTP POST request
 4. Reporting success or failure
 
-The message will appear in your Discord channel exactly as it would when a player joins your Minecraft server.
+This confirms the webhook plumbing works end-to-end, but the message text is a fixed test string — it does not match the plugin's actual join messages. The real plugin picks a random, medieval-themed template from `discord.join-messages` in `config.yml` (see the [Configuration Guide](CONFIG.md)) each time a player joins.
 
 ## Example Output
 
@@ -142,4 +142,4 @@ discord:
   webhook-url: "https://discord.com/api/webhooks/123456/abcdef"
 ```
 
-The plugin will send notifications in exactly the same format as these test scripts.
+The plugin uses the same webhook delivery mechanism as these test scripts, but sends a randomly-selected, medieval-themed join message instead of the scripts' fixed test string. See `discord.join-messages` in the [Configuration Guide](CONFIG.md) to customize those messages.
