@@ -7,6 +7,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
 
 public final class Herald extends JavaPlugin implements Listener {
 
@@ -44,11 +45,15 @@ public final class Herald extends JavaPlugin implements Listener {
         String discordWebhookUrl = getConfig().getString("discord.webhook-url");
         List<String> discordJoinMessages = getConfig().getStringList("discord.join-messages");
 
-        if (discordEnabled && discordWebhookUrl != null && !discordWebhookUrl.isEmpty()) {
-            notifiers.add(new DiscordNotifier(discordWebhookUrl, discordJoinMessages));
-            getLogger().info("Discord notifications enabled");
-        } else if (discordEnabled) {
-            getLogger().warning("Discord notifications are enabled in config, but 'discord.webhook-url' is missing or empty. Discord notifications will be skipped.");
+        if (discordEnabled) {
+            List<String> discordProblems = DiscordNotifier.validateConfiguration(discordWebhookUrl);
+            if (discordProblems.isEmpty()) {
+                notifiers.add(new DiscordNotifier(discordWebhookUrl, discordJoinMessages));
+                getLogger().info("Discord notifications enabled");
+            } else {
+                getLogger().warning("Discord notifications are enabled in config, but the configuration is incomplete: "
+                        + String.join("; ", discordProblems) + ". Discord notifications will be skipped.");
+            }
         }
 
         // Load email settings (secondary notification method)
@@ -60,14 +65,22 @@ public final class Herald extends JavaPlugin implements Listener {
         String emailSender = getConfig().getString("email.sender");
         boolean useTLS = getConfig().getBoolean("smtp.use-tls", true);
 
-        boolean hasRecipients = !emailRecipients.isEmpty();
-        boolean hasSmtp = smtpServer != null && !smtpServer.isEmpty();
+        List<String> emailProblems = EmailNotifier.validateConfiguration(emailRecipients, smtpServer, emailSender);
+        boolean emailPartiallyConfigured = !emailRecipients.isEmpty()
+                || (smtpServer != null && !smtpServer.isEmpty())
+                || (emailSender != null && !emailSender.isEmpty());
 
-        if (hasRecipients && hasSmtp) {
+        if (emailProblems.isEmpty()) {
             notifiers.add(new EmailNotifier(smtpServer, smtpPort, smtpUsername, smtpPassword, emailSender, useTLS, emailRecipients));
             getLogger().info("Email notifications enabled");
-        } else if (hasRecipients || hasSmtp) {
-            getLogger().warning("Email configuration is incomplete. Email notifications will be skipped.");
+        } else if (emailPartiallyConfigured) {
+            getLogger().warning("Email configuration is incomplete: " + String.join("; ", emailProblems)
+                    + ". Email notifications will be skipped.");
+        }
+
+        if (notifiers.isEmpty()) {
+            getLogger().warning("No notification methods are configured, so Herald will not send any notifications. "
+                    + "Enable Discord or email notifications in plugins/Herald/config.yml - see CONFIG.md for details.");
         }
     }
 
@@ -82,9 +95,8 @@ public final class Herald extends JavaPlugin implements Listener {
                     getLogger().info("Notification sent successfully for player: " + playerName
                             + " via " + notifier.getClass().getSimpleName());
                 } catch (Exception e) {
-                    getLogger().severe("Failed to send notification via "
-                            + notifier.getClass().getSimpleName() + ": " + e.getMessage());
-                    e.printStackTrace();
+                    getLogger().log(Level.SEVERE, "Failed to send notification via "
+                            + notifier.getClass().getSimpleName() + ": " + e.getMessage(), e);
                 }
             }
         });

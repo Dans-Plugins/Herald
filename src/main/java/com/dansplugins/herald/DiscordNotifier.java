@@ -1,6 +1,9 @@
 package com.dansplugins.herald;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -25,10 +28,13 @@ public class DiscordNotifier implements Notifier {
             "\u2728 By the stars above, **{player}** hath made their presence known in **{server}**!"
     );
     
+    /** Maximum number of characters of an error response body included in failure messages. */
+    static final int MAX_ERROR_BODY_LENGTH = 500;
+
     private final String webhookUrl;
     private final List<String> joinMessages;
     private final Random random;
-    
+
     public DiscordNotifier(String webhookUrl, List<String> joinMessages) {
         this(webhookUrl, joinMessages, new Random());
     }
@@ -40,7 +46,23 @@ public class DiscordNotifier implements Notifier {
                 : DEFAULT_JOIN_MESSAGES;
         this.random = random;
     }
-    
+
+    /**
+     * Check the configuration keys Discord notifications require.
+     * Callers use this to report every missing key at startup instead of
+     * failing once per player join.
+     *
+     * @param webhookUrl the configured {@code discord.webhook-url}
+     * @return a list of human-readable problems, empty when the configuration is complete
+     */
+    public static List<String> validateConfiguration(String webhookUrl) {
+        List<String> problems = new ArrayList<>();
+        if (webhookUrl == null || webhookUrl.isEmpty()) {
+            problems.add("'discord.webhook-url' is missing or empty");
+        }
+        return problems;
+    }
+
     /**
      * Send a player-join notification to Discord.
      * Picks a random message from the configured templates and sends it via webhook.
@@ -86,13 +108,45 @@ public class DiscordNotifier implements Notifier {
             
             int responseCode = connection.getResponseCode();
             if (responseCode < 200 || responseCode >= 300) {
-                throw new IOException("Discord webhook returned error code: " + responseCode);
+                String errorBody = readErrorBody(connection);
+                throw new IOException("Discord webhook returned error code: " + responseCode
+                        + (errorBody.isEmpty() ? "" : " (" + errorBody + ")"));
             }
         } finally {
             connection.disconnect();
         }
     }
     
+    /**
+     * Read the error response body of a failed webhook call so the reason for the
+     * failure (invalid token, unknown webhook, rate limit) survives into the log.
+     * Whitespace is collapsed and the result is capped at {@link #MAX_ERROR_BODY_LENGTH}
+     * characters to keep the message to a single readable log line.
+     *
+     * @param connection the connection that returned a non-2xx status
+     * @return the error body, or an empty string if there is none or it cannot be read
+     */
+    String readErrorBody(HttpURLConnection connection) {
+        InputStream errorStream = connection.getErrorStream();
+        if (errorStream == null) {
+            return "";
+        }
+        StringBuilder body = new StringBuilder();
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(errorStream, StandardCharsets.UTF_8))) {
+            char[] buffer = new char[256];
+            int read;
+            while (body.length() <= MAX_ERROR_BODY_LENGTH && (read = reader.read(buffer)) != -1) {
+                body.append(buffer, 0, read);
+            }
+        } catch (IOException e) {
+            return "";
+        }
+        String collapsed = body.toString().replaceAll("\\s+", " ").trim();
+        return collapsed.length() > MAX_ERROR_BODY_LENGTH
+                ? collapsed.substring(0, MAX_ERROR_BODY_LENGTH) + "..."
+                : collapsed;
+    }
+
     /**
      * Escape special characters in JSON strings
      * @param text The text to escape

@@ -31,6 +31,30 @@ public class EmailNotifier implements Notifier {
     }
 
     /**
+     * Check the configuration keys email notifications require.
+     * Callers use this to report every missing key at startup instead of
+     * failing once per player join.
+     *
+     * @param recipients  the configured {@code email-recipients}
+     * @param smtpServer  the configured {@code smtp.server}
+     * @param emailSender the configured {@code email.sender}
+     * @return a list of human-readable problems, empty when the configuration is complete
+     */
+    public static List<String> validateConfiguration(List<String> recipients, String smtpServer, String emailSender) {
+        List<String> problems = new ArrayList<>();
+        if (recipients == null || recipients.isEmpty()) {
+            problems.add("'email-recipients' is empty");
+        }
+        if (smtpServer == null || smtpServer.isEmpty()) {
+            problems.add("'smtp.server' is missing or empty");
+        }
+        if (emailSender == null || emailSender.isEmpty()) {
+            problems.add("'email.sender' is missing or empty");
+        }
+        return problems;
+    }
+
+    /**
      * Send a player-join notification via email.
      * Formats a plain-text subject and body and sends via SMTP.
      *
