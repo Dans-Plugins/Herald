@@ -384,7 +384,7 @@ class HeraldIntegrationTest {
             // config.yml ships with discord.enabled false and every email key empty
             assertFalse(DiscordNotifier.validateConfiguration("").isEmpty(),
                     "Default webhook URL should be reported as missing");
-            assertEquals(3, EmailNotifier.validateConfiguration(Collections.emptyList(), "", "").size(),
+            assertEquals(3, EmailNotifier.validateConfiguration(Collections.emptyList(), "", 587, "").size(),
                     "Default email configuration should report every missing key");
         }
 
@@ -392,7 +392,7 @@ class HeraldIntegrationTest {
         @DisplayName("Email configured except for the sender should be reported, not silently accepted")
         void testEmailMissingOnlySenderIsReported() {
             List<String> problems = EmailNotifier.validateConfiguration(
-                    List.of("admin@example.com"), "smtp.example.com", "");
+                    List.of("admin@example.com"), "smtp.example.com", 587, "");
 
             assertEquals(1, problems.size());
             assertTrue(problems.get(0).contains("email.sender"),
@@ -405,7 +405,7 @@ class HeraldIntegrationTest {
             assertTrue(DiscordNotifier.validateConfiguration(
                     "https://discord.com/api/webhooks/123/abc").isEmpty());
             assertTrue(EmailNotifier.validateConfiguration(
-                    List.of("admin@example.com"), "smtp.example.com", "herald@example.com").isEmpty());
+                    List.of("admin@example.com"), "smtp.example.com", 587, "herald@example.com").isEmpty());
         }
 
         @Test
@@ -413,7 +413,7 @@ class HeraldIntegrationTest {
         void testProblemsNameConfigKeys() {
             List<String> problems = new java.util.ArrayList<>(
                     DiscordNotifier.validateConfiguration(null));
-            problems.addAll(EmailNotifier.validateConfiguration(null, null, null));
+            problems.addAll(EmailNotifier.validateConfiguration(null, null, 587, null));
 
             for (String problem : problems) {
                 assertTrue(problem.contains("'"),

@@ -65,7 +65,7 @@ public final class Herald extends JavaPlugin implements Listener {
         String emailSender = getConfig().getString("email.sender");
         boolean useTLS = getConfig().getBoolean("smtp.use-tls", true);
 
-        List<String> emailProblems = EmailNotifier.validateConfiguration(emailRecipients, smtpServer, emailSender);
+        List<String> emailProblems = EmailNotifier.validateConfiguration(emailRecipients, smtpServer, smtpPort, emailSender);
         boolean emailPartiallyConfigured = !emailRecipients.isEmpty()
                 || (smtpServer != null && !smtpServer.isEmpty())
                 || (emailSender != null && !emailSender.isEmpty());

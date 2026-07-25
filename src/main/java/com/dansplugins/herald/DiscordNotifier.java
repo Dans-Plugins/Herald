@@ -126,7 +126,7 @@ public class DiscordNotifier implements Notifier {
      * @param connection the connection that returned a non-2xx status
      * @return the error body, or an empty string if there is none or it cannot be read
      */
-    String readErrorBody(HttpURLConnection connection) {
+    private String readErrorBody(HttpURLConnection connection) {
         InputStream errorStream = connection.getErrorStream();
         if (errorStream == null) {
             return "";
@@ -142,9 +142,11 @@ public class DiscordNotifier implements Notifier {
             return "";
         }
         String collapsed = body.toString().replaceAll("\\s+", " ").trim();
-        return collapsed.length() > MAX_ERROR_BODY_LENGTH
-                ? collapsed.substring(0, MAX_ERROR_BODY_LENGTH) + "..."
-                : collapsed;
+        if (collapsed.length() <= MAX_ERROR_BODY_LENGTH) {
+            return collapsed;
+        }
+        int keepLength = Math.max(0, MAX_ERROR_BODY_LENGTH - 3);
+        return collapsed.substring(0, keepLength) + "...";
     }
 
     /**

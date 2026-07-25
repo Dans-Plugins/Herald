@@ -37,16 +37,20 @@ public class EmailNotifier implements Notifier {
      *
      * @param recipients  the configured {@code email-recipients}
      * @param smtpServer  the configured {@code smtp.server}
+     * @param smtpPort    the configured {@code smtp.port}
      * @param emailSender the configured {@code email.sender}
      * @return a list of human-readable problems, empty when the configuration is complete
      */
-    public static List<String> validateConfiguration(List<String> recipients, String smtpServer, String emailSender) {
+    public static List<String> validateConfiguration(List<String> recipients, String smtpServer, int smtpPort, String emailSender) {
         List<String> problems = new ArrayList<>();
         if (recipients == null || recipients.isEmpty()) {
             problems.add("'email-recipients' is empty");
         }
         if (smtpServer == null || smtpServer.isEmpty()) {
             problems.add("'smtp.server' is missing or empty");
+        }
+        if (smtpPort < 1 || smtpPort > 65535) {
+            problems.add("'smtp.port' must be between 1 and 65535");
         }
         if (emailSender == null || emailSender.isEmpty()) {
             problems.add("'email.sender' is missing or empty");

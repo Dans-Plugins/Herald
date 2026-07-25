@@ -973,6 +973,11 @@ class DiscordNotifierTest {
 
             assertTrue(exception.getMessage().endsWith("...)"),
                     "Truncated body should be marked with an ellipsis: " + exception.getMessage());
+            int bodyStart = exception.getMessage().indexOf('(') + 1;
+            int bodyEnd = exception.getMessage().lastIndexOf(')');
+            String truncatedBody = exception.getMessage().substring(bodyStart, bodyEnd);
+            assertEquals(DiscordNotifier.MAX_ERROR_BODY_LENGTH, truncatedBody.length(),
+                    "Truncated body should stay within the documented cap");
             assertTrue(exception.getMessage().length() < DiscordNotifier.MAX_ERROR_BODY_LENGTH * 2,
                     "Message should be bounded in length");
         }
