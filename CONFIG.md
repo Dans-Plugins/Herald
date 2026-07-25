@@ -33,7 +33,7 @@ discord:
 
 **Type:** string
 **Default:** `""`
-**Description:** The Discord webhook URL for the channel where join notifications should be sent. Required when `discord.enabled` is `true`.
+**Description:** The Discord webhook URL for the channel where join notifications should be sent. Required when `discord.enabled` is `true`; if it is missing, Herald logs a warning at startup and skips Discord notifications.
 
 **Example:**
 
@@ -69,7 +69,7 @@ discord:
 
 **Type:** list of strings
 **Default:** `[]`
-**Description:** List of email addresses that will receive a notification when a player joins. Both this and `smtp.server` must be configured for email notifications to be active.
+**Description:** List of email addresses that will receive a notification when a player joins. This, `smtp.server`, and `email.sender` must all be configured for email notifications to be active; if any of them is missing, Herald logs a warning naming the missing key at startup and skips email notifications.
 
 **Example:**
 
@@ -148,7 +148,7 @@ smtp:
 
 **Type:** string
 **Default:** `""`
-**Description:** The email address that appears as the sender of notification emails.
+**Description:** The email address that appears as the sender of notification emails. Required when email notifications are used, alongside `email-recipients` and `smtp.server`.
 
 **Example:**
 
