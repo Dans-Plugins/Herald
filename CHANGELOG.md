@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- Startup now warns when email notifications are partially configured, naming each missing or invalid key (`email-recipients`, `smtp.server`, `smtp.port`, `email.sender`) instead of logging `Email notifications enabled` and then failing on every player join.
+- Startup now warns when no notification method is configured at all, so a default install no longer looks healthy while doing nothing.
+- Discord webhook failures now include the error response body (e.g. `Invalid Webhook Token`) alongside the HTTP status code.
+- Notifier failures are logged through the plugin logger with their stack trace instead of being printed to standard error.
+
 ### Fixed
 
 - Email notification body now includes the server name (e.g. `Steve has joined MySurvivalServer at <date>`) instead of the generic `"the server"`.

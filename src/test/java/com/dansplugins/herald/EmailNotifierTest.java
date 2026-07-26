@@ -402,4 +402,96 @@ class EmailNotifierTest {
             assertFalse(capturedSubject[0].contains("**"));
         }
     }
+
+    @Nested
+    @DisplayName("Configuration Validation Tests")
+    class ConfigurationValidationTests {
+
+        @Test
+        @DisplayName("validateConfiguration should report no problems for a complete configuration")
+        void testValidateCompleteConfiguration() {
+            List<String> problems = EmailNotifier.validateConfiguration(
+                    Arrays.asList("admin@example.com"), "smtp.example.com", 587, "herald@example.com");
+
+            assertTrue(problems.isEmpty(), "Complete configuration should have no problems: " + problems);
+        }
+
+        @ParameterizedTest
+        @NullAndEmptySource
+        @DisplayName("validateConfiguration should report a missing email sender")
+        void testValidateMissingSender(String emailSender) {
+            List<String> problems = EmailNotifier.validateConfiguration(
+                    Arrays.asList("admin@example.com"), "smtp.example.com", 587, emailSender);
+
+            assertEquals(1, problems.size(), "Only the sender should be reported: " + problems);
+            assertTrue(problems.get(0).contains("email.sender"),
+                    "Problem should name the config key: " + problems.get(0));
+        }
+
+        @Test
+        @DisplayName("validateConfiguration should report missing recipients")
+        void testValidateMissingRecipients() {
+            List<String> problems = EmailNotifier.validateConfiguration(
+                    Collections.emptyList(), "smtp.example.com", 587, "herald@example.com");
+
+            assertEquals(1, problems.size(), "Only the recipients should be reported: " + problems);
+            assertTrue(problems.get(0).contains("email-recipients"),
+                    "Problem should name the config key: " + problems.get(0));
+        }
+
+        @Test
+        @DisplayName("validateConfiguration should treat a null recipients list as missing")
+        void testValidateNullRecipients() {
+            List<String> problems = EmailNotifier.validateConfiguration(
+                    null, "smtp.example.com", 587, "herald@example.com");
+
+            assertEquals(1, problems.size(), "Only the recipients should be reported: " + problems);
+            assertTrue(problems.get(0).contains("email-recipients"));
+        }
+
+        @ParameterizedTest
+        @NullAndEmptySource
+        @DisplayName("validateConfiguration should report a missing SMTP server")
+        void testValidateMissingSmtpServer(String smtpServer) {
+            List<String> problems = EmailNotifier.validateConfiguration(
+                    Arrays.asList("admin@example.com"), smtpServer, 587, "herald@example.com");
+
+            assertEquals(1, problems.size(), "Only the SMTP server should be reported: " + problems);
+            assertTrue(problems.get(0).contains("smtp.server"),
+                    "Problem should name the config key: " + problems.get(0));
+        }
+
+        @ParameterizedTest
+        @ValueSource(ints = {0, -1, 65536})
+        @DisplayName("validateConfiguration should report an invalid SMTP port")
+        void testValidateInvalidSmtpPort(int smtpPort) {
+            List<String> problems = EmailNotifier.validateConfiguration(
+                    Arrays.asList("admin@example.com"), "smtp.example.com", smtpPort, "herald@example.com");
+
+            assertEquals(1, problems.size(), "Only the SMTP port should be reported: " + problems);
+            assertTrue(problems.get(0).contains("smtp.port"),
+                    "Problem should name the config key: " + problems.get(0));
+        }
+
+        @Test
+        @DisplayName("validateConfiguration should report every missing key at once")
+        void testValidateReportsAllProblems() {
+            List<String> problems = EmailNotifier.validateConfiguration(Collections.emptyList(), "", 587, "");
+
+            assertEquals(3, problems.size(), "All three keys should be reported: " + problems);
+        }
+
+        @Test
+        @DisplayName("validateConfiguration problems should match the keys sendNotification enforces")
+        void testValidationMatchesRuntimeChecks() {
+            EmailNotifier notifier = new EmailNotifier(
+                    "smtp.example.com", 587, "user", "pass", "", true,
+                    Arrays.asList("admin@example.com"));
+
+            assertFalse(EmailNotifier.validateConfiguration(
+                    Arrays.asList("admin@example.com"), "smtp.example.com", 587, "").isEmpty(),
+                    "Validation should reject what sendNotification rejects");
+            assertThrows(IllegalStateException.class, () -> notifier.notifyPlayerJoin("Steve", "Server"));
+        }
+    }
 }

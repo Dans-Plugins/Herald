@@ -5,6 +5,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.util.Collections;
+import java.util.List;
+
 /**
  * Integration tests for Herald plugin configuration and message formatting
  */
@@ -361,6 +364,60 @@ class HeraldIntegrationTest {
                         "Discord message should bold the player name: " + discordMessage);
                 assertTrue(discordMessage.contains("**" + serverName + "**"),
                         "Discord message should bold the server name: " + discordMessage);
+            }
+        }
+    }
+
+    /**
+     * Herald extends JavaPlugin, and spigot-api is a compileOnly dependency, so the
+     * wiring in Herald.loadConfiguration() cannot be instantiated from tests. These
+     * tests cover the validation each notifier exposes for that wiring to use, for the
+     * configuration shapes an operator is most likely to end up with.
+     */
+    @Nested
+    @DisplayName("Startup Configuration Validation Tests")
+    class StartupConfigurationValidationTests {
+
+        @Test
+        @DisplayName("Default config.yml shape should leave both notifiers unconfigured")
+        void testDefaultConfigurationConfiguresNothing() {
+            // config.yml ships with discord.enabled false and every email key empty
+            assertFalse(DiscordNotifier.validateConfiguration("").isEmpty(),
+                    "Default webhook URL should be reported as missing");
+            assertEquals(3, EmailNotifier.validateConfiguration(Collections.emptyList(), "", 587, "").size(),
+                    "Default email configuration should report every missing key");
+        }
+
+        @Test
+        @DisplayName("Email configured except for the sender should be reported, not silently accepted")
+        void testEmailMissingOnlySenderIsReported() {
+            List<String> problems = EmailNotifier.validateConfiguration(
+                    List.of("admin@example.com"), "smtp.example.com", 587, "");
+
+            assertEquals(1, problems.size());
+            assertTrue(problems.get(0).contains("email.sender"),
+                    "Operator should be told which key is missing: " + problems.get(0));
+        }
+
+        @Test
+        @DisplayName("A fully configured Discord and email setup should report no problems")
+        void testFullyConfiguredSetup() {
+            assertTrue(DiscordNotifier.validateConfiguration(
+                    "https://discord.com/api/webhooks/123/abc").isEmpty());
+            assertTrue(EmailNotifier.validateConfiguration(
+                    List.of("admin@example.com"), "smtp.example.com", 587, "herald@example.com").isEmpty());
+        }
+
+        @Test
+        @DisplayName("Validation problems should name the config key an operator edits")
+        void testProblemsNameConfigKeys() {
+            List<String> problems = new java.util.ArrayList<>(
+                    DiscordNotifier.validateConfiguration(null));
+            problems.addAll(EmailNotifier.validateConfiguration(null, null, 587, null));
+
+            for (String problem : problems) {
+                assertTrue(problem.contains("'"),
+                        "Problem should quote the config key it refers to: " + problem);
             }
         }
     }

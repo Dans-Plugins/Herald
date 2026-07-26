@@ -51,6 +51,17 @@ discord:
 
 See the [Configuration Guide](CONFIG.md) for full details on every option.
 
+### Checking That Your Configuration Was Accepted
+
+Herald reports what it loaded in the server log at startup:
+
+- `Discord notifications enabled` / `Email notifications enabled` — that integration is active.
+- `Discord notifications are enabled in config, but the configuration is incomplete: ...` — `discord.enabled` is `true` but a required key is missing; the message names the key.
+- `Email configuration is incomplete: ...` — some email settings are filled in but not all, or `smtp.port` is outside the valid range; the message names each missing or invalid key.
+- `No notification methods are configured, so Herald will not send any notifications.` — nothing is set up yet, which is the state of a freshly generated `config.yml`.
+
+If a notification fails to send later, Herald logs the failure with the reason — for Discord, that includes the error message the webhook returned.
+
 ## Permissions
 
 Herald does not register any custom permission nodes. All functionality is controlled through the configuration file and applies server-wide.

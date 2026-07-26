@@ -3,6 +3,7 @@ package com.dansplugins.herald;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -14,8 +15,13 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 
+import com.sun.net.httpserver.HttpServer;
+
 import java.io.IOException;
+import java.io.OutputStream;
+import java.net.InetSocketAddress;
 import java.net.MalformedURLException;
+import java.nio.charset.StandardCharsets;
 
 /**
  * Unit tests for DiscordNotifier class
@@ -858,6 +864,131 @@ class DiscordNotifierTest {
                 assertTrue(msg.contains("{player}"), "Message should contain {player}: " + msg);
                 assertTrue(msg.contains("{server}"), "Message should contain {server}: " + msg);
             }
+        }
+    }
+
+    @Nested
+    @DisplayName("Configuration Validation Tests")
+    class ConfigurationValidationTests {
+
+        @Test
+        @DisplayName("validateConfiguration should report no problems for a configured webhook URL")
+        void testValidateConfigurationWithUrl() {
+            assertTrue(DiscordNotifier.validateConfiguration("https://discord.com/api/webhooks/123/abc").isEmpty());
+        }
+
+        @ParameterizedTest
+        @NullAndEmptySource
+        @DisplayName("validateConfiguration should report a missing webhook URL")
+        void testValidateConfigurationWithoutUrl(String webhookUrl) {
+            List<String> problems = DiscordNotifier.validateConfiguration(webhookUrl);
+
+            assertEquals(1, problems.size());
+            assertTrue(problems.get(0).contains("discord.webhook-url"),
+                    "Problem should name the config key: " + problems.get(0));
+        }
+    }
+
+    @Nested
+    @DisplayName("Webhook Error Response Tests")
+    class WebhookErrorResponseTests {
+
+        private HttpServer server;
+
+        /**
+         * Start a local webhook that always answers with the given status and body.
+         *
+         * @return the URL of the stub webhook endpoint
+         */
+        private String startStubWebhook(int statusCode, String responseBody) throws IOException {
+            server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+            server.createContext("/webhook", exchange -> {
+                exchange.getRequestBody().readAllBytes();
+                byte[] body = responseBody.getBytes(StandardCharsets.UTF_8);
+                exchange.sendResponseHeaders(statusCode, body.length == 0 ? -1 : body.length);
+                if (body.length > 0) {
+                    try (OutputStream os = exchange.getResponseBody()) {
+                        os.write(body);
+                    }
+                }
+                exchange.close();
+            });
+            server.start();
+            return "http://127.0.0.1:" + server.getAddress().getPort() + "/webhook";
+        }
+
+        @AfterEach
+        void stopStubWebhook() {
+            if (server != null) {
+                server.stop(0);
+            }
+        }
+
+        @Test
+        @DisplayName("sendMessage should include the Discord error body in the exception message")
+        void testSendMessageIncludesErrorBody() throws IOException {
+            String url = startStubWebhook(401, "{\"message\": \"Invalid Webhook Token\", \"code\": 50027}");
+            DiscordNotifier notifier = new DiscordNotifier(url, null);
+
+            IOException exception = assertThrows(IOException.class, () -> notifier.sendMessage("hello"));
+
+            assertTrue(exception.getMessage().contains("401"),
+                    "Message should include the status code: " + exception.getMessage());
+            assertTrue(exception.getMessage().contains("Invalid Webhook Token"),
+                    "Message should include the response body: " + exception.getMessage());
+        }
+
+        @Test
+        @DisplayName("sendMessage should report the status code alone when the error body is empty")
+        void testSendMessageWithEmptyErrorBody() throws IOException {
+            String url = startStubWebhook(500, "");
+            DiscordNotifier notifier = new DiscordNotifier(url, null);
+
+            IOException exception = assertThrows(IOException.class, () -> notifier.sendMessage("hello"));
+
+            assertEquals("Discord webhook returned error code: 500", exception.getMessage());
+        }
+
+        @Test
+        @DisplayName("sendMessage should collapse newlines in the error body onto one line")
+        void testSendMessageCollapsesErrorBodyWhitespace() throws IOException {
+            String url = startStubWebhook(400, "{\n  \"message\": \"Cannot send an empty message\"\n}");
+            DiscordNotifier notifier = new DiscordNotifier(url, null);
+
+            IOException exception = assertThrows(IOException.class, () -> notifier.sendMessage("hello"));
+
+            assertFalse(exception.getMessage().contains("\n"),
+                    "Message should be a single line: " + exception.getMessage());
+            assertTrue(exception.getMessage().contains("Cannot send an empty message"),
+                    "Message should include the response body: " + exception.getMessage());
+        }
+
+        @Test
+        @DisplayName("sendMessage should truncate an oversized error body")
+        void testSendMessageTruncatesLongErrorBody() throws IOException {
+            String url = startStubWebhook(400, "x".repeat(DiscordNotifier.MAX_ERROR_BODY_LENGTH * 3));
+            DiscordNotifier notifier = new DiscordNotifier(url, null);
+
+            IOException exception = assertThrows(IOException.class, () -> notifier.sendMessage("hello"));
+
+            assertTrue(exception.getMessage().endsWith("...)"),
+                    "Truncated body should be marked with an ellipsis: " + exception.getMessage());
+            int bodyStart = exception.getMessage().indexOf('(') + 1;
+            int bodyEnd = exception.getMessage().lastIndexOf(')');
+            String truncatedBody = exception.getMessage().substring(bodyStart, bodyEnd);
+            assertEquals(DiscordNotifier.MAX_ERROR_BODY_LENGTH, truncatedBody.length(),
+                    "Truncated body should stay within the documented cap");
+            assertTrue(exception.getMessage().length() < DiscordNotifier.MAX_ERROR_BODY_LENGTH * 2,
+                    "Message should be bounded in length");
+        }
+
+        @Test
+        @DisplayName("sendMessage should succeed without throwing on a 204 response")
+        void testSendMessageSucceedsOnNoContent() throws IOException {
+            String url = startStubWebhook(204, "");
+            DiscordNotifier notifier = new DiscordNotifier(url, null);
+
+            assertDoesNotThrow(() -> notifier.sendMessage("hello"));
         }
     }
 }
