@@ -69,7 +69,7 @@ discord:
 
 **Type:** list of strings
 **Default:** `[]`
-**Description:** List of email addresses that will receive a notification when a player joins. This, `smtp.server`, and `email.sender` must all be configured for email notifications to be active; if any of them is missing, Herald logs a warning naming the missing key at startup and skips email notifications.
+**Description:** List of email addresses that will receive a notification when a player joins. This, `smtp.server`, and `email.sender` must all be configured — and `smtp.port` must be a valid port — for email notifications to be active; if any of them is missing or invalid, Herald logs a warning naming the offending key at startup and skips email notifications.
 
 **Example:**
 
@@ -96,7 +96,7 @@ smtp:
 
 **Type:** integer
 **Default:** `587`
-**Description:** The port of your SMTP server. Use `587` for TLS (STARTTLS) or `25` for plain SMTP.
+**Description:** The port of your SMTP server. Use `587` for TLS (STARTTLS) or `25` for plain SMTP. Must be between `1` and `65535`; if it is set to a value outside that range, Herald logs a warning at startup and skips email notifications.
 
 **Example:**
 
