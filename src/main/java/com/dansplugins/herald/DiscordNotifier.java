@@ -6,6 +6,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
+import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -89,7 +90,7 @@ public class DiscordNotifier implements Notifier {
             throw new IllegalArgumentException("Discord webhook URL is not configured");
         }
         
-        URL url = new URL(webhookUrl);
+        URL url = URI.create(webhookUrl).toURL();
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
         connection.setRequestMethod("POST");
         connection.setRequestProperty("Content-Type", "application/json");
