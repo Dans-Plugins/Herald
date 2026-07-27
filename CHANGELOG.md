@@ -17,6 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 - Email notification body now includes the server name (e.g. `Steve has joined MySurvivalServer at <date>`) instead of the generic `"the server"`.
 - `server-name` is now cached at plugin load time rather than re-read from config on every player join event.
+- `DiscordNotifier` no longer uses the deprecated `URL(String)` constructor, removing a compiler deprecation warning on every build.
 
 ## [1.0.0]
 
