@@ -8,6 +8,7 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -71,7 +72,7 @@ public class DiscordNotifier implements Notifier {
             uri = URI.create(webhookUrl);
             uri.toURL();
         } catch (IllegalArgumentException | MalformedURLException e) {
-            problems.add("'discord.webhook-url' is not a valid URL: " + e.getMessage());
+            problems.add("'discord.webhook-url' is not a valid URL: " + describeUrlProblem(e));
             return problems;
         }
 
@@ -80,6 +81,28 @@ public class DiscordNotifier implements Notifier {
             problems.add("'discord.webhook-url' must use http or https, but uses '" + scheme + "'");
         }
         return problems;
+    }
+
+    /**
+     * Describe why a webhook URL could not be parsed, without repeating the URL.
+     * A Discord webhook URL carries a bearer token, so the value must not reach
+     * the server log even when it is malformed. {@link URI#create(String)} echoes
+     * its whole input in the exception message, but wraps a
+     * {@link URISyntaxException} whose reason is the diagnostic on its own.
+     *
+     * @param e the failure raised while parsing the URL
+     * @return the reason the URL is unusable, safe to log
+     */
+    private static String describeUrlProblem(Exception e) {
+        Throwable cause = e.getCause();
+        if (cause instanceof URISyntaxException) {
+            String reason = ((URISyntaxException) cause).getReason();
+            if (reason != null && !reason.isEmpty()) {
+                return reason;
+            }
+        }
+        String message = e.getMessage();
+        return (message != null && !message.isEmpty()) ? message : "the URL could not be parsed";
     }
 
     /**

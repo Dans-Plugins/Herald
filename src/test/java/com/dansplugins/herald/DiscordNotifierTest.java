@@ -934,6 +934,36 @@ class DiscordNotifierTest {
         }
 
         @Test
+        @DisplayName("validateConfiguration should not echo the webhook URL, which carries a bearer token")
+        void testValidateConfigurationDoesNotLeakWebhookToken() {
+            String secretToken = "s3cret-webhook-token";
+            // A stray space makes the URL unparseable while leaving the token intact
+            String webhookUrl = "https://discord.com/api/webhooks/123/" + secretToken + " ";
+
+            List<String> problems = DiscordNotifier.validateConfiguration(webhookUrl);
+
+            assertEquals(1, problems.size(), "Expected exactly one problem, got: " + problems);
+            assertFalse(problems.get(0).contains(secretToken),
+                    "Problem must not repeat the webhook token into the log: " + problems.get(0));
+            assertFalse(problems.get(0).contains("discord.com"),
+                    "Problem must not repeat the webhook URL into the log: " + problems.get(0));
+            assertTrue(problems.get(0).contains("not a valid URL"),
+                    "Problem should still explain the URL is invalid: " + problems.get(0));
+        }
+
+        @Test
+        @DisplayName("validateConfiguration should still explain why an unparseable URL is invalid")
+        void testValidateConfigurationExplainsWhyUrlIsInvalid() {
+            List<String> relative = DiscordNotifier.validateConfiguration("webhooks/123/abc");
+            List<String> illegalCharacter = DiscordNotifier.validateConfiguration("https://discord.com/a b");
+
+            assertTrue(relative.get(0).contains("not absolute"),
+                    "A relative URL should say so: " + relative.get(0));
+            assertTrue(illegalCharacter.get(0).contains("Illegal character"),
+                    "An illegal character should be named: " + illegalCharacter.get(0));
+        }
+
+        @Test
         @DisplayName("validateConfiguration should reject the URLs sendMessage cannot open")
         void testValidateConfigurationRejectsUrlsSendMessageCannotOpen() {
             DiscordNotifier notifier = new DiscordNotifier("discord.com/api/webhooks/123/abc", null);
