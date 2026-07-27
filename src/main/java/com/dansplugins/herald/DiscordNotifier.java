@@ -6,7 +6,9 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -50,8 +52,10 @@ public class DiscordNotifier implements Notifier {
 
     /**
      * Check the configuration keys Discord notifications require.
-     * Callers use this to report every missing key at startup instead of
-     * failing once per player join.
+     * Callers use this to report every missing or unusable key at startup
+     * instead of failing once per player join. A syntactically invalid URL is
+     * reported here because {@link #sendMessage(String)} would otherwise only
+     * discover it when the first player joins.
      *
      * @param webhookUrl the configured {@code discord.webhook-url}
      * @return a list of human-readable problems, empty when the configuration is complete
@@ -60,8 +64,45 @@ public class DiscordNotifier implements Notifier {
         List<String> problems = new ArrayList<>();
         if (webhookUrl == null || webhookUrl.isEmpty()) {
             problems.add("'discord.webhook-url' is missing or empty");
+            return problems;
+        }
+
+        URI uri;
+        try {
+            uri = URI.create(webhookUrl);
+            uri.toURL();
+        } catch (IllegalArgumentException | MalformedURLException e) {
+            problems.add("'discord.webhook-url' is not a valid URL: " + describeUrlProblem(e));
+            return problems;
+        }
+
+        String scheme = uri.getScheme();
+        if (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme)) {
+            problems.add("'discord.webhook-url' must use http or https, but uses '" + scheme + "'");
         }
         return problems;
+    }
+
+    /**
+     * Describe why a webhook URL could not be parsed, without repeating the URL.
+     * A Discord webhook URL carries a bearer token, so the value must not reach
+     * the server log even when it is malformed. {@link URI#create(String)} echoes
+     * its whole input in the exception message, but wraps a
+     * {@link URISyntaxException} whose reason is the diagnostic on its own.
+     *
+     * @param e the failure raised while parsing the URL
+     * @return the reason the URL is unusable, safe to log
+     */
+    private static String describeUrlProblem(Exception e) {
+        Throwable cause = e.getCause();
+        if (cause instanceof URISyntaxException) {
+            String reason = ((URISyntaxException) cause).getReason();
+            if (reason != null && !reason.isEmpty()) {
+                return reason;
+            }
+        }
+        String message = e.getMessage();
+        return (message != null && !message.isEmpty()) ? message : "the URL could not be parsed";
     }
 
     /**

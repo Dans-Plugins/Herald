@@ -887,6 +887,92 @@ class DiscordNotifierTest {
             assertTrue(problems.get(0).contains("discord.webhook-url"),
                     "Problem should name the config key: " + problems.get(0));
         }
+
+        @Test
+        @DisplayName("validateConfiguration should accept a plain http webhook URL")
+        void testValidateConfigurationWithHttpUrl() {
+            assertTrue(DiscordNotifier.validateConfiguration("http://localhost:8080/webhook").isEmpty());
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {
+                "discord.com/api/webhooks/123/abc",
+                "not a url",
+                "webhooks/123/abc"
+        })
+        @DisplayName("validateConfiguration should report a webhook URL that is not a valid URL")
+        void testValidateConfigurationWithMalformedUrl(String webhookUrl) {
+            List<String> problems = DiscordNotifier.validateConfiguration(webhookUrl);
+
+            assertEquals(1, problems.size(), "Expected exactly one problem, got: " + problems);
+            assertTrue(problems.get(0).contains("discord.webhook-url"),
+                    "Problem should name the config key: " + problems.get(0));
+            assertTrue(problems.get(0).contains("not a valid URL"),
+                    "Problem should explain the URL is invalid: " + problems.get(0));
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {
+                "ftp://discord.com/api/webhooks/123/abc",
+                "file:///tmp/webhook"
+        })
+        @DisplayName("validateConfiguration should report a webhook URL that does not use http or https")
+        void testValidateConfigurationWithNonHttpScheme(String webhookUrl) {
+            List<String> problems = DiscordNotifier.validateConfiguration(webhookUrl);
+
+            assertEquals(1, problems.size(), "Expected exactly one problem, got: " + problems);
+            assertTrue(problems.get(0).contains("discord.webhook-url"),
+                    "Problem should name the config key: " + problems.get(0));
+            assertTrue(problems.get(0).contains("http or https"),
+                    "Problem should explain the scheme requirement: " + problems.get(0));
+        }
+
+        @Test
+        @DisplayName("validateConfiguration should accept an uppercase scheme")
+        void testValidateConfigurationWithUppercaseScheme() {
+            assertTrue(DiscordNotifier.validateConfiguration("HTTPS://discord.com/api/webhooks/123/abc").isEmpty());
+        }
+
+        @Test
+        @DisplayName("validateConfiguration should not echo the webhook URL, which carries a bearer token")
+        void testValidateConfigurationDoesNotLeakWebhookToken() {
+            String secretToken = "s3cret-webhook-token";
+            // A stray space makes the URL unparseable while leaving the token intact
+            String webhookUrl = "https://discord.com/api/webhooks/123/" + secretToken + " ";
+
+            List<String> problems = DiscordNotifier.validateConfiguration(webhookUrl);
+
+            assertEquals(1, problems.size(), "Expected exactly one problem, got: " + problems);
+            assertFalse(problems.get(0).contains(secretToken),
+                    "Problem must not repeat the webhook token into the log: " + problems.get(0));
+            assertFalse(problems.get(0).contains("discord.com"),
+                    "Problem must not repeat the webhook URL into the log: " + problems.get(0));
+            assertTrue(problems.get(0).contains("not a valid URL"),
+                    "Problem should still explain the URL is invalid: " + problems.get(0));
+        }
+
+        @Test
+        @DisplayName("validateConfiguration should still explain why an unparseable URL is invalid")
+        void testValidateConfigurationExplainsWhyUrlIsInvalid() {
+            List<String> relative = DiscordNotifier.validateConfiguration("webhooks/123/abc");
+            List<String> illegalCharacter = DiscordNotifier.validateConfiguration("https://discord.com/a b");
+
+            assertTrue(relative.get(0).contains("not absolute"),
+                    "A relative URL should say so: " + relative.get(0));
+            assertTrue(illegalCharacter.get(0).contains("Illegal character"),
+                    "An illegal character should be named: " + illegalCharacter.get(0));
+        }
+
+        @Test
+        @DisplayName("validateConfiguration should reject the URLs sendMessage cannot open")
+        void testValidateConfigurationRejectsUrlsSendMessageCannotOpen() {
+            DiscordNotifier notifier = new DiscordNotifier("discord.com/api/webhooks/123/abc", null);
+
+            assertFalse(DiscordNotifier.validateConfiguration("discord.com/api/webhooks/123/abc").isEmpty(),
+                    "A URL sendMessage cannot open should be reported at startup");
+            assertThrows(IllegalArgumentException.class, () -> notifier.sendMessage("test"),
+                    "sendMessage should be the failure this startup check prevents");
+        }
     }
 
     @Nested

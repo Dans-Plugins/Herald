@@ -33,7 +33,7 @@ discord:
 
 **Type:** string
 **Default:** `""`
-**Description:** The Discord webhook URL for the channel where join notifications should be sent. Required when `discord.enabled` is `true`; if it is missing, Herald logs a warning at startup and skips Discord notifications.
+**Description:** The Discord webhook URL for the channel where join notifications should be sent. Required when `discord.enabled` is `true`. Must be a syntactically valid `http` or `https` URL — a value with the scheme left off, such as `discord.com/api/webhooks/123456/abcdef`, is rejected. If the URL is missing or unusable, Herald logs a warning naming the problem at startup and skips Discord notifications.
 
 **Example:**
 
@@ -70,6 +70,8 @@ discord:
 **Type:** list of strings
 **Default:** `[]`
 **Description:** List of email addresses that will receive a notification when a player joins. This, `smtp.server`, and `email.sender` must all be configured — and `smtp.port` must be a valid port — for email notifications to be active; if any of them is missing or invalid, Herald logs a warning naming the offending key at startup and skips email notifications.
+
+Every entry must be a parseable address. Herald checks each one at startup and names the offending address in the warning, so a typo such as `admin@` (no domain) is reported once at startup rather than on every player join. A display name is accepted, e.g. `Server Admin <admin@example.com>`.
 
 **Example:**
 
@@ -148,7 +150,7 @@ smtp:
 
 **Type:** string
 **Default:** `""`
-**Description:** The email address that appears as the sender of notification emails. Required when email notifications are used, alongside `email-recipients` and `smtp.server`.
+**Description:** The email address that appears as the sender of notification emails. Required when email notifications are used, alongside `email-recipients` and `smtp.server`. Must be a parseable address; Herald checks it at startup and names it in the warning if it is not. A display name is accepted, e.g. `Herald <herald@example.com>`.
 
 **Example:**
 
