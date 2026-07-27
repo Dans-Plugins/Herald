@@ -6,6 +6,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -50,8 +51,10 @@ public class DiscordNotifier implements Notifier {
 
     /**
      * Check the configuration keys Discord notifications require.
-     * Callers use this to report every missing key at startup instead of
-     * failing once per player join.
+     * Callers use this to report every missing or unusable key at startup
+     * instead of failing once per player join. A syntactically invalid URL is
+     * reported here because {@link #sendMessage(String)} would otherwise only
+     * discover it when the first player joins.
      *
      * @param webhookUrl the configured {@code discord.webhook-url}
      * @return a list of human-readable problems, empty when the configuration is complete
@@ -60,6 +63,21 @@ public class DiscordNotifier implements Notifier {
         List<String> problems = new ArrayList<>();
         if (webhookUrl == null || webhookUrl.isEmpty()) {
             problems.add("'discord.webhook-url' is missing or empty");
+            return problems;
+        }
+
+        URI uri;
+        try {
+            uri = URI.create(webhookUrl);
+            uri.toURL();
+        } catch (IllegalArgumentException | MalformedURLException e) {
+            problems.add("'discord.webhook-url' is not a valid URL: " + e.getMessage());
+            return problems;
+        }
+
+        String scheme = uri.getScheme();
+        if (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme)) {
+            problems.add("'discord.webhook-url' must use http or https, but uses '" + scheme + "'");
         }
         return problems;
     }

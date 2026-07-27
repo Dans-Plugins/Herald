@@ -56,8 +56,8 @@ See the [Configuration Guide](CONFIG.md) for full details on every option.
 Herald reports what it loaded in the server log at startup:
 
 - `Discord notifications enabled` / `Email notifications enabled` — that integration is active.
-- `Discord notifications are enabled in config, but the configuration is incomplete: ...` — `discord.enabled` is `true` but a required key is missing; the message names the key.
-- `Email configuration is incomplete: ...` — some email settings are filled in but not all, or `smtp.port` is outside the valid range; the message names each missing or invalid key.
+- `Discord notifications are enabled in config, but the configuration is incomplete: ...` — `discord.enabled` is `true` but a required key is missing or unusable; the message names the key. A `discord.webhook-url` that is not a valid `http`/`https` URL is reported here, not on the first player join.
+- `Email configuration is incomplete: ...` — some email settings are filled in but not all, `smtp.port` is outside the valid range, or an address in `email-recipients` or `email.sender` cannot be parsed; the message names each missing or invalid key, and quotes the offending address where one is at fault.
 - `No notification methods are configured, so Herald will not send any notifications.` — nothing is set up yet, which is the state of a freshly generated `config.yml`.
 
 If a notification fails to send later, Herald logs the failure with the reason — for Discord, that includes the error message the webhook returned.

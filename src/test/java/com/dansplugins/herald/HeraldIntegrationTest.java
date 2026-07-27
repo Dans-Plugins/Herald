@@ -409,6 +409,20 @@ class HeraldIntegrationTest {
         }
 
         @Test
+        @DisplayName("A config full of plausible typos should be caught at startup, not on first join")
+        void testTypoedConfigurationIsCaughtAtStartup() {
+            List<String> discordProblems = DiscordNotifier.validateConfiguration(
+                    "discord.com/api/webhooks/123/abc");
+            List<String> emailProblems = EmailNotifier.validateConfiguration(
+                    List.of("admin@"), "smtp.example.com", 587, "herald@example.com");
+
+            assertEquals(1, discordProblems.size(),
+                    "A webhook URL missing its scheme should be reported: " + discordProblems);
+            assertEquals(1, emailProblems.size(),
+                    "A recipient missing its domain should be reported: " + emailProblems);
+        }
+
+        @Test
         @DisplayName("Validation problems should name the config key an operator edits")
         void testProblemsNameConfigKeys() {
             List<String> problems = new java.util.ArrayList<>(

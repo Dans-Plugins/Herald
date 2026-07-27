@@ -1,5 +1,6 @@
 package com.dansplugins.herald;
 
+import jakarta.mail.internet.AddressException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -492,6 +493,81 @@ class EmailNotifierTest {
                     Arrays.asList("admin@example.com"), "smtp.example.com", 587, "").isEmpty(),
                     "Validation should reject what sendNotification rejects");
             assertThrows(IllegalStateException.class, () -> notifier.notifyPlayerJoin("Steve", "Server"));
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"herald@", "@example.com", "not an email", "plainword"})
+        @DisplayName("validateConfiguration should report an unparseable email sender")
+        void testValidateMalformedSender(String emailSender) {
+            List<String> problems = EmailNotifier.validateConfiguration(
+                    Arrays.asList("admin@example.com"), "smtp.example.com", 587, emailSender);
+
+            assertEquals(1, problems.size(), "Only the sender should be reported: " + problems);
+            assertTrue(problems.get(0).contains("email.sender"),
+                    "Problem should name the config key: " + problems.get(0));
+            assertTrue(problems.get(0).contains(emailSender),
+                    "Problem should quote the offending address: " + problems.get(0));
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"admin@", "@example.com", "not an email", "plainword"})
+        @DisplayName("validateConfiguration should report an unparseable recipient")
+        void testValidateMalformedRecipient(String recipient) {
+            List<String> problems = EmailNotifier.validateConfiguration(
+                    Arrays.asList(recipient), "smtp.example.com", 587, "herald@example.com");
+
+            assertEquals(1, problems.size(), "Only the recipient should be reported: " + problems);
+            assertTrue(problems.get(0).contains("email-recipients"),
+                    "Problem should name the config key: " + problems.get(0));
+            assertTrue(problems.get(0).contains(recipient),
+                    "Problem should quote the offending address: " + problems.get(0));
+        }
+
+        @Test
+        @DisplayName("validateConfiguration should report each invalid recipient separately")
+        void testValidateReportsEveryInvalidRecipient() {
+            List<String> problems = EmailNotifier.validateConfiguration(
+                    Arrays.asList("admin@example.com", "broken@", "@also-broken.com"),
+                    "smtp.example.com", 587, "herald@example.com");
+
+            assertEquals(2, problems.size(), "Both invalid recipients should be reported: " + problems);
+            assertTrue(problems.get(0).contains("broken@"), "First problem should name the first bad address: " + problems);
+            assertTrue(problems.get(1).contains("@also-broken.com"), "Second problem should name the second bad address: " + problems);
+        }
+
+        @Test
+        @DisplayName("validateConfiguration should report a blank recipient entry")
+        void testValidateBlankRecipient() {
+            List<String> problems = EmailNotifier.validateConfiguration(
+                    Arrays.asList("   "), "smtp.example.com", 587, "herald@example.com");
+
+            assertEquals(1, problems.size(), "The blank recipient should be reported: " + problems);
+            assertTrue(problems.get(0).contains("email-recipients"),
+                    "Problem should name the config key: " + problems.get(0));
+        }
+
+        @Test
+        @DisplayName("validateConfiguration should accept addresses with display names and subdomains")
+        void testValidateAcceptsRealisticAddresses() {
+            List<String> problems = EmailNotifier.validateConfiguration(
+                    Arrays.asList("Server Admin <admin@mail.example.co.uk>", "owner+herald@example.com"),
+                    "smtp.example.com", 587, "Herald <herald@example.com>");
+
+            assertTrue(problems.isEmpty(), "Realistic addresses should be accepted: " + problems);
+        }
+
+        @Test
+        @DisplayName("validateConfiguration should reject the addresses sendNotification cannot parse")
+        void testValidationMatchesAddressParsingAtSendTime() {
+            EmailNotifier notifier = new EmailNotifier(
+                    "smtp.example.com", 587, "user", "pass", "herald@example.com", true,
+                    Arrays.asList("broken@"));
+
+            assertFalse(EmailNotifier.validateConfiguration(
+                    Arrays.asList("broken@"), "smtp.example.com", 587, "herald@example.com").isEmpty(),
+                    "An address sendNotification cannot parse should be reported at startup");
+            assertThrows(AddressException.class, () -> notifier.notifyPlayerJoin("Steve", "Server"),
+                    "The per-join failure is what this startup check prevents");
         }
     }
 }
