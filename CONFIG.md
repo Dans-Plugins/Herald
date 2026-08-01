@@ -163,7 +163,7 @@ email:
 
 **Type:** string
 **Default:** `"{player} joined {server} server"`
-**Description:** The subject line of notification emails. Supports the `{player}`, `{server}` and `{time}` placeholders. `{time}` is replaced with the time the player joined. If the key is absent or empty, Herald falls back to the built-in default.
+**Description:** The subject line of notification emails. Supports the `{player}`, `{server}` and `{time}` placeholders. `{time}` is replaced with the time the player joined, in the server's default time zone and locale, e.g. `Fri Aug 01 21:48:45 UTC 2026`. The format itself is not configurable. If the key is absent or empty, Herald falls back to the built-in default.
 
 **Example:**
 
