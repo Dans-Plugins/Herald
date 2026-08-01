@@ -25,7 +25,7 @@ discord:
 # List of email addresses to notify when a player joins
 email-recipients: []
 
-# Herald config.yml
+# SMTP server settings used to deliver the emails above
 smtp:
   server: ""           # Your SMTP server address
   port: 587            # 587 for TLS, 25 for plain
@@ -35,3 +35,7 @@ smtp:
 
 email:
   sender: ""           # The email address to send notifications from
+  # Subject and body of the notification email. Both support {player}, {server}
+  # and {time} placeholders. Leave empty to use the built-in defaults shown here.
+  subject: "{player} joined {server} server"
+  body: "{player} has joined {server} at {time}"

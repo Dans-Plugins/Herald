@@ -6,8 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+
+- `email.subject` and `email.body` config options, so the email subject line and body can be customised the same way `discord.join-messages` already could. Both support `{player}`, `{server}` and `{time}` placeholders and fall back to the built-in defaults when absent or empty.
+
 ### Changed
 
+- Per-join log messages now name the notification channel (`Discord`, `email`) instead of the Java class name (`DiscordNotifier`, `EmailNotifier`), matching the vocabulary used by the rest of Herald's log output.
+- The comment above the `smtp:` block in the default `config.yml` now describes that block instead of repeating the file name.
 - Startup now warns when email notifications are partially configured, naming each missing or invalid key (`email-recipients`, `smtp.server`, `smtp.port`, `email.sender`) instead of logging `Email notifications enabled` and then failing on every player join.
 - Startup validation now checks that `discord.webhook-url` is a syntactically valid `http`/`https` URL, so a webhook URL with the scheme left off is reported once at startup instead of failing on every player join. The warning explains why the URL is invalid without repeating the URL itself, so the webhook token never reaches the server log.
 - Startup validation now checks that every address in `email-recipients` and the `email.sender` address are parseable, naming the offending address, instead of failing on every player join.

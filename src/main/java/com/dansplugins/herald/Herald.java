@@ -64,6 +64,8 @@ public final class Herald extends JavaPlugin implements Listener {
         String smtpPassword = getConfig().getString("smtp.password");
         String emailSender = getConfig().getString("email.sender");
         boolean useTLS = getConfig().getBoolean("smtp.use-tls", true);
+        String emailSubject = getConfig().getString("email.subject");
+        String emailBody = getConfig().getString("email.body");
 
         List<String> emailProblems = EmailNotifier.validateConfiguration(emailRecipients, smtpServer, smtpPort, emailSender);
         boolean emailPartiallyConfigured = !emailRecipients.isEmpty()
@@ -71,7 +73,8 @@ public final class Herald extends JavaPlugin implements Listener {
                 || (emailSender != null && !emailSender.isEmpty());
 
         if (emailProblems.isEmpty()) {
-            notifiers.add(new EmailNotifier(smtpServer, smtpPort, smtpUsername, smtpPassword, emailSender, useTLS, emailRecipients));
+            notifiers.add(new EmailNotifier(smtpServer, smtpPort, smtpUsername, smtpPassword, emailSender, useTLS,
+                    emailRecipients, emailSubject, emailBody));
             getLogger().info("Email notifications enabled");
         } else if (emailPartiallyConfigured) {
             getLogger().warning("Email configuration is incomplete: " + String.join("; ", emailProblems)
@@ -93,10 +96,10 @@ public final class Herald extends JavaPlugin implements Listener {
                 try {
                     notifier.notifyPlayerJoin(playerName, serverName);
                     getLogger().info("Notification sent successfully for player: " + playerName
-                            + " via " + notifier.getClass().getSimpleName());
+                            + " via " + notifier.getDisplayName());
                 } catch (Exception e) {
                     getLogger().log(Level.SEVERE, "Failed to send notification via "
-                            + notifier.getClass().getSimpleName() + ": " + e.getMessage(), e);
+                            + notifier.getDisplayName() + ": " + e.getMessage(), e);
                 }
             }
         });

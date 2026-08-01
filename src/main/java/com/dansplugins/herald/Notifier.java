@@ -14,4 +14,14 @@ public interface Notifier {
      * @throws Exception if the notification could not be delivered
      */
     void notifyPlayerJoin(String playerName, String serverName) throws Exception;
+
+    /**
+     * The name this channel is called by in operator-facing log messages.
+     * Implementations declare this explicitly rather than letting their class
+     * name leak into the log, so the vocabulary of the log stays that of the
+     * config sections the operator edits.
+     *
+     * @return the operator-facing name of this channel, e.g. {@code "Discord"}
+     */
+    String getDisplayName();
 }

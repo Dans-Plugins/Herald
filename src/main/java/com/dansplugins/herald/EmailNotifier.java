@@ -11,6 +11,12 @@ import java.util.Properties;
 
 public class EmailNotifier implements Notifier {
 
+    /** Subject used when {@code email.subject} is absent or empty. */
+    static final String DEFAULT_SUBJECT = "{player} joined {server} server";
+
+    /** Body used when {@code email.body} is absent or empty. */
+    static final String DEFAULT_BODY = "{player} has joined {server} at {time}";
+
     private final String smtpServer;
     private final int smtpPort;
     private final String smtpUsername;
@@ -18,10 +24,32 @@ public class EmailNotifier implements Notifier {
     private final String emailSender;
     private final boolean useTLS;
     private final List<String> recipients;
+    private final String subjectTemplate;
+    private final String bodyTemplate;
 
+    /**
+     * Create a notifier that formats its emails with the built-in default
+     * subject and body templates.
+     */
     public EmailNotifier(String smtpServer, int smtpPort, String smtpUsername,
                          String smtpPassword, String emailSender, boolean useTLS,
                          List<String> recipients) {
+        this(smtpServer, smtpPort, smtpUsername, smtpPassword, emailSender, useTLS, recipients, null, null);
+    }
+
+    /**
+     * Create a notifier with operator-supplied message templates.
+     * Both templates support the {@code {player}}, {@code {server}} and
+     * {@code {time}} placeholders. A template that is {@code null} or empty
+     * falls back to the built-in default, mirroring how {@link DiscordNotifier}
+     * treats an absent {@code discord.join-messages} list.
+     *
+     * @param subjectTemplate the configured {@code email.subject}, or {@code null} for the default
+     * @param bodyTemplate    the configured {@code email.body}, or {@code null} for the default
+     */
+    public EmailNotifier(String smtpServer, int smtpPort, String smtpUsername,
+                         String smtpPassword, String emailSender, boolean useTLS,
+                         List<String> recipients, String subjectTemplate, String bodyTemplate) {
         this.smtpServer = smtpServer;
         this.smtpPort = smtpPort;
         this.smtpUsername = smtpUsername;
@@ -29,6 +57,17 @@ public class EmailNotifier implements Notifier {
         this.emailSender = emailSender;
         this.useTLS = useTLS;
         this.recipients = recipients != null ? new ArrayList<>(recipients) : new ArrayList<>();
+        this.subjectTemplate = templateOrDefault(subjectTemplate, DEFAULT_SUBJECT);
+        this.bodyTemplate = templateOrDefault(bodyTemplate, DEFAULT_BODY);
+    }
+
+    /**
+     * @param template     the configured template
+     * @param defaultValue the built-in template to use when none is configured
+     * @return {@code template} when it holds something, otherwise {@code defaultValue}
+     */
+    private static String templateOrDefault(String template, String defaultValue) {
+        return (template != null && !template.isEmpty()) ? template : defaultValue;
     }
 
     /**
@@ -98,7 +137,8 @@ public class EmailNotifier implements Notifier {
 
     /**
      * Send a player-join notification via email.
-     * Formats a plain-text subject and body and sends via SMTP.
+     * Fills the configured subject and body templates and sends via SMTP.
+     * Both templates support {player}, {server} and {time} placeholders.
      *
      * @param playerName the name of the player who joined
      * @param serverName the name of the server they joined
@@ -107,9 +147,34 @@ public class EmailNotifier implements Notifier {
      */
     @Override
     public void notifyPlayerJoin(String playerName, String serverName) throws MessagingException {
-        String subject = playerName + " joined " + serverName + " server";
-        String body = playerName + " has joined " + serverName + " at " + new java.util.Date();
+        // One timestamp for both templates, so a subject and body that each use
+        // {time} cannot disagree about when the player joined.
+        String time = new java.util.Date().toString();
+        String subject = fillTemplate(subjectTemplate, playerName, serverName, time);
+        String body = fillTemplate(bodyTemplate, playerName, serverName, time);
         sendNotification(subject, body);
+    }
+
+    /**
+     * Substitute the supported placeholders into a message template.
+     *
+     * @param template   the template to fill
+     * @param playerName the value for {player}
+     * @param serverName the value for {server}
+     * @param time       the value for {time}
+     * @return the template with every placeholder replaced
+     */
+    private static String fillTemplate(String template, String playerName, String serverName, String time) {
+        return template
+                .replace("{player}", playerName)
+                .replace("{server}", serverName)
+                .replace("{time}", time);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public String getDisplayName() {
+        return "email";
     }
 
     /**

@@ -31,7 +31,7 @@
 4. Optionally set `server-name` to customise the `{server}` placeholder.
 5. Restart the server or reload the plugin.
 
-### Customising Join Messages
+### Customising Discord Join Messages
 
 Edit the `discord.join-messages` list in `config.yml`. Each entry is a template that supports `{player}` and `{server}` placeholders. A random message is chosen each time a player joins.
 
@@ -49,6 +49,18 @@ discord:
 3. Add recipient addresses to `email-recipients`.
 4. Restart the server.
 
+### Customising Email Messages
+
+Edit `email.subject` and `email.body` in `config.yml`. Both support the `{player}` and `{server}` placeholders, plus `{time}` for the moment the player joined. Leave a key empty to keep the built-in default.
+
+```yaml
+email:
+  subject: "[{server}] {player} is online"
+  body: "Greetings from {server}. {player} just logged in."
+```
+
+To send a body without a timestamp, simply leave `{time}` out of it.
+
 See the [Configuration Guide](CONFIG.md) for full details on every option.
 
 ### Checking That Your Configuration Was Accepted
@@ -60,7 +72,7 @@ Herald reports what it loaded in the server log at startup:
 - `Email configuration is incomplete: ...` — some email settings are filled in but not all, `smtp.port` is outside the valid range, or an address in `email-recipients` or `email.sender` cannot be parsed; the message names each missing or invalid key, and quotes the offending address where one is at fault.
 - `No notification methods are configured, so Herald will not send any notifications.` — nothing is set up yet, which is the state of a freshly generated `config.yml`.
 
-If a notification fails to send later, Herald logs the failure with the reason — for Discord, that includes the error message the webhook returned.
+If a notification fails to send later, Herald logs the failure with the reason and names the channel it was sent through (`Discord` or `email`) — for Discord, the reason includes the error message the webhook returned.
 
 ## Permissions
 

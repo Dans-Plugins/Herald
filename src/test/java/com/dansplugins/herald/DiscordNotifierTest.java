@@ -668,6 +668,16 @@ class DiscordNotifierTest {
         }
 
         @Test
+        @DisplayName("getDisplayName should return the operator-facing channel name, not the class name")
+        void testGetDisplayName() {
+            DiscordNotifier notifier = new DiscordNotifier("https://discord.com/api/webhooks/123/abc", null);
+
+            assertEquals("Discord", notifier.getDisplayName());
+            assertNotEquals(notifier.getClass().getSimpleName(), notifier.getDisplayName(),
+                    "The log name must not be tied to the class name");
+        }
+
+        @Test
         @DisplayName("notifyPlayerJoin should throw IllegalArgumentException when URL is null")
         void testNotifyPlayerJoinWithNullUrlThrows() {
             DiscordNotifier notifier = new DiscordNotifier(null, null);
