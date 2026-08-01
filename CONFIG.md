@@ -158,3 +158,29 @@ smtp:
 email:
   sender: "herald@example.com"
 ```
+
+## email.subject
+
+**Type:** string
+**Default:** `"{player} joined {server} server"`
+**Description:** The subject line of notification emails. Supports the `{player}`, `{server}` and `{time}` placeholders. `{time}` is replaced with the time the player joined, in the server's default time zone and locale, e.g. `Fri Aug 01 21:48:45 UTC 2026`. The format itself is not configurable. If the key is absent or empty, Herald falls back to the built-in default.
+
+**Example:**
+
+```yaml
+email:
+  subject: "[{server}] {player} is online"
+```
+
+## email.body
+
+**Type:** string
+**Default:** `"{player} has joined {server} at {time}"`
+**Description:** The plain-text body of notification emails. Supports the same `{player}`, `{server}` and `{time}` placeholders as `email.subject`, and falls back to the built-in default when absent or empty. Remove `{time}` to send a body without a timestamp. The subject and body of a single notification are always filled from the same timestamp.
+
+**Example:**
+
+```yaml
+email:
+  body: "Greetings from {server}. {player} just logged in."
+```

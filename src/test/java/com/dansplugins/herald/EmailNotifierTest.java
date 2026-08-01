@@ -317,6 +317,18 @@ class EmailNotifierTest {
         }
 
         @Test
+        @DisplayName("getDisplayName should return the operator-facing channel name, not the class name")
+        void testGetDisplayName() {
+            EmailNotifier notifier = new EmailNotifier(
+                    "smtp.example.com", 587, "user", "pass", "sender@example.com", true,
+                    Arrays.asList("recipient@example.com"));
+
+            assertEquals("email", notifier.getDisplayName());
+            assertNotEquals(notifier.getClass().getSimpleName(), notifier.getDisplayName(),
+                    "The log name must not be tied to the class name");
+        }
+
+        @Test
         @DisplayName("notifyPlayerJoin should throw IllegalStateException when no recipients are configured")
         void testNotifyPlayerJoinWithNoRecipientsThrows() {
             EmailNotifier notifier = new EmailNotifier(
@@ -401,6 +413,118 @@ class EmailNotifierTest {
             assertNotEquals(discordFormat, capturedSubject[0]);
             assertTrue(capturedSubject[0].contains("Player"));
             assertFalse(capturedSubject[0].contains("**"));
+        }
+    }
+
+    @Nested
+    @DisplayName("Message Template Tests")
+    class MessageTemplateTests {
+
+        /** Subject and body captured from a notifier whose SMTP send is stubbed out. */
+        private String[] capture(String subjectTemplate, String bodyTemplate,
+                                 String playerName, String serverName) throws Exception {
+            final String[] captured = {null, null};
+            EmailNotifier notifier = new EmailNotifier(
+                    "smtp.example.com", 587, "user", "pass", "sender@example.com", true,
+                    Arrays.asList("recipient@example.com"), subjectTemplate, bodyTemplate) {
+                @Override
+                public void sendNotification(String subject, String body) {
+                    captured[0] = subject;
+                    captured[1] = body;
+                }
+            };
+            notifier.notifyPlayerJoin(playerName, serverName);
+            return captured;
+        }
+
+        @Test
+        @DisplayName("Configured subject and body templates should be used verbatim after substitution")
+        void testCustomTemplatesAreUsed() throws Exception {
+            String[] captured = capture(
+                    "[{server}] {player} is online",
+                    "Greetings from {server}. {player} just logged in.",
+                    "Steve", "MySurvivalServer");
+
+            assertEquals("[MySurvivalServer] Steve is online", captured[0]);
+            assertEquals("Greetings from MySurvivalServer. Steve just logged in.", captured[1]);
+        }
+
+        @Test
+        @DisplayName("{time} should be substituted in both the subject and the body")
+        void testTimePlaceholderIsSubstituted() throws Exception {
+            String[] captured = capture("Joined at {time}", "At {time}", "Steve", "Server");
+
+            assertFalse(captured[0].contains("{time}"), "Subject should not keep the literal placeholder");
+            assertFalse(captured[1].contains("{time}"), "Body should not keep the literal placeholder");
+            assertTrue(captured[0].startsWith("Joined at "));
+            assertTrue(captured[1].startsWith("At "));
+        }
+
+        @Test
+        @DisplayName("Subject and body should report the same join time")
+        void testSubjectAndBodyShareOneTimestamp() throws Exception {
+            String[] captured = capture("{time}", "{time}", "Steve", "Server");
+
+            assertEquals(captured[0], captured[1],
+                    "Both templates should be filled from a single timestamp");
+        }
+
+        @ParameterizedTest
+        @NullAndEmptySource
+        @DisplayName("Absent or empty templates should fall back to the built-in defaults")
+        void testFallsBackToDefaults(String template) throws Exception {
+            String[] captured = capture(template, template, "Steve", "MySurvivalServer");
+
+            assertEquals("Steve joined MySurvivalServer server", captured[0]);
+            assertTrue(captured[1].startsWith("Steve has joined MySurvivalServer at "),
+                    "Default body should keep the timestamp: " + captured[1]);
+        }
+
+        @Test
+        @DisplayName("A template with no placeholders should be sent unchanged")
+        void testTemplateWithoutPlaceholders() throws Exception {
+            String[] captured = capture("A player joined", "Someone is on the server.", "Steve", "Server");
+
+            assertEquals("A player joined", captured[0]);
+            assertEquals("Someone is on the server.", captured[1]);
+        }
+
+        @Test
+        @DisplayName("Every occurrence of a placeholder should be replaced")
+        void testRepeatedPlaceholders() throws Exception {
+            String[] captured = capture("{player} & {player}", "{server} / {server}", "Steve", "Server");
+
+            assertEquals("Steve & Steve", captured[0]);
+            assertEquals("Server / Server", captured[1]);
+        }
+
+        @Test
+        @DisplayName("The seven-argument constructor should use the default templates")
+        void testDefaultConstructorUsesDefaultTemplates() throws Exception {
+            final String[] capturedSubject = {null};
+            EmailNotifier notifier = new EmailNotifier(
+                    "smtp.example.com", 587, "user", "pass", "sender@example.com", true,
+                    Arrays.asList("recipient@example.com")) {
+                @Override
+                public void sendNotification(String subject, String body) {
+                    capturedSubject[0] = subject;
+                }
+            };
+
+            notifier.notifyPlayerJoin("Steve", "MySurvivalServer");
+
+            assertEquals("Steve joined MySurvivalServer server", capturedSubject[0]);
+        }
+
+        @Test
+        @DisplayName("Default templates should use the documented placeholders")
+        void testDefaultTemplatePlaceholders() {
+            assertEquals("{player} joined {server} server", EmailNotifier.DEFAULT_SUBJECT);
+            assertEquals("{player} has joined {server} at {time}", EmailNotifier.DEFAULT_BODY);
+            assertFalse(EmailNotifier.DEFAULT_SUBJECT.contains("**"),
+                    "Email defaults must not contain Discord markdown");
+            assertFalse(EmailNotifier.DEFAULT_BODY.contains("**"),
+                    "Email defaults must not contain Discord markdown");
         }
     }
 

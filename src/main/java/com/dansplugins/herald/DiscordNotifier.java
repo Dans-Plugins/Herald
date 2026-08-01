@@ -121,6 +121,12 @@ public class DiscordNotifier implements Notifier {
         sendMessage(content);
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public String getDisplayName() {
+        return "Discord";
+    }
+
     /**
      * Send a message to Discord via webhook
      * @param content The message content to send

@@ -435,4 +435,35 @@ class HeraldIntegrationTest {
             }
         }
     }
+
+    @Nested
+    @DisplayName("Notifier Display Name Tests")
+    class NotifierDisplayNameTests {
+
+        private final List<Notifier> allNotifiers = List.of(
+                new DiscordNotifier("https://discord.com/api/webhooks/123/abc", null),
+                new EmailNotifier("smtp.example.com", 587, "user", "pass", "herald@example.com", true,
+                        List.of("admin@example.com")));
+
+        @Test
+        @DisplayName("Every notifier should declare a display name that is not its class name")
+        void testDisplayNamesAreNotClassNames() {
+            for (Notifier notifier : allNotifiers) {
+                String displayName = notifier.getDisplayName();
+                assertNotNull(displayName, "Every notifier must declare a display name");
+                assertFalse(displayName.isEmpty(), "Display name must not be empty");
+                assertNotEquals(notifier.getClass().getSimpleName(), displayName,
+                        "Display name must not be the Java class name");
+            }
+        }
+
+        @Test
+        @DisplayName("Display names should be distinct so the log identifies which channel failed")
+        void testDisplayNamesAreDistinct() {
+            long distinct = allNotifiers.stream().map(Notifier::getDisplayName).distinct().count();
+
+            assertEquals(allNotifiers.size(), distinct,
+                    "Two channels sharing a display name would make the log ambiguous");
+        }
+    }
 }
