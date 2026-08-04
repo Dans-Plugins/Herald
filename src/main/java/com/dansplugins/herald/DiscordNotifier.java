@@ -51,16 +51,41 @@ public class DiscordNotifier implements Notifier {
     }
 
     /**
+     * Check the configuration keys Discord notifications require, against the
+     * built-in join messages.
+     *
+     * @param webhookUrl the configured {@code discord.webhook-url}
+     * @return a list of human-readable problems, empty when the configuration is complete
+     * @see #validateConfiguration(String, List)
+     */
+    public static List<String> validateConfiguration(String webhookUrl) {
+        return validateConfiguration(webhookUrl, null);
+    }
+
+    /**
      * Check the configuration keys Discord notifications require.
      * Callers use this to report every missing or unusable key at startup
      * instead of failing once per player join. A syntactically invalid URL is
      * reported here because {@link #sendMessage(String)} would otherwise only
-     * discover it when the first player joins.
+     * discover it when the first player joins, and a blank message template is
+     * reported for the same reason: Discord rejects an empty message, so a
+     * blank entry fails on the joins that happen to draw it and no others.
      *
-     * @param webhookUrl the configured {@code discord.webhook-url}
+     * @param webhookUrl   the configured {@code discord.webhook-url}
+     * @param joinMessages the configured {@code discord.join-messages}, or {@code null} for the defaults
      * @return a list of human-readable problems, empty when the configuration is complete
      */
-    public static List<String> validateConfiguration(String webhookUrl) {
+    public static List<String> validateConfiguration(String webhookUrl, List<String> joinMessages) {
+        List<String> problems = new ArrayList<>(validateWebhookUrl(webhookUrl));
+        problems.addAll(validateJoinMessages(joinMessages));
+        return problems;
+    }
+
+    /**
+     * @param webhookUrl the configured {@code discord.webhook-url}
+     * @return the problems with the webhook URL, empty when it is usable
+     */
+    private static List<String> validateWebhookUrl(String webhookUrl) {
         List<String> problems = new ArrayList<>();
         if (webhookUrl == null || webhookUrl.isEmpty()) {
             problems.add("'discord.webhook-url' is missing or empty");
@@ -79,6 +104,31 @@ public class DiscordNotifier implements Notifier {
         String scheme = uri.getScheme();
         if (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme)) {
             problems.add("'discord.webhook-url' must use http or https, but uses '" + scheme + "'");
+        }
+        return problems;
+    }
+
+    /**
+     * Check that every configured message template can actually be sent.
+     * An absent or empty list is fine, because the constructor falls back to
+     * {@link #DEFAULT_JOIN_MESSAGES} in that case; a list holding a blank entry
+     * is not, because that entry is kept and would be sent as an empty message.
+     * Positions are reported 1-based so the offending line can be found in
+     * {@code config.yml} without counting from zero.
+     *
+     * @param joinMessages the configured {@code discord.join-messages}
+     * @return the problems with the message templates, empty when they are all usable
+     */
+    private static List<String> validateJoinMessages(List<String> joinMessages) {
+        List<String> problems = new ArrayList<>();
+        if (joinMessages == null) {
+            return problems;
+        }
+        for (int i = 0; i < joinMessages.size(); i++) {
+            String message = joinMessages.get(i);
+            if (message == null || message.trim().isEmpty()) {
+                problems.add("'discord.join-messages' entry " + (i + 1) + " is blank");
+            }
         }
         return problems;
     }

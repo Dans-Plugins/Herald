@@ -46,7 +46,7 @@ public final class Herald extends JavaPlugin implements Listener {
         List<String> discordJoinMessages = getConfig().getStringList("discord.join-messages");
 
         if (discordEnabled) {
-            List<String> discordProblems = DiscordNotifier.validateConfiguration(discordWebhookUrl);
+            List<String> discordProblems = DiscordNotifier.validateConfiguration(discordWebhookUrl, discordJoinMessages);
             if (discordProblems.isEmpty()) {
                 notifiers.add(new DiscordNotifier(discordWebhookUrl, discordJoinMessages));
                 getLogger().info("Discord notifications enabled");
@@ -56,29 +56,35 @@ public final class Herald extends JavaPlugin implements Listener {
             }
         }
 
-        // Load email settings (secondary notification method)
-        List<String> emailRecipients = getConfig().getStringList("email-recipients");
-        String smtpServer = getConfig().getString("smtp.server");
-        int smtpPort = getConfig().getInt("smtp.port");
-        String smtpUsername = getConfig().getString("smtp.username");
-        String smtpPassword = getConfig().getString("smtp.password");
-        String emailSender = getConfig().getString("email.sender");
-        boolean useTLS = getConfig().getBoolean("smtp.use-tls", true);
-        String emailSubject = getConfig().getString("email.subject");
-        String emailBody = getConfig().getString("email.body");
+        // Load email settings (secondary notification method).
+        // The toggle defaults to true so that a config.yml written before the key
+        // existed keeps sending the emails it sends today.
+        boolean emailEnabled = getConfig().getBoolean("email.enabled", true);
 
-        List<String> emailProblems = EmailNotifier.validateConfiguration(emailRecipients, smtpServer, smtpPort, emailSender);
-        boolean emailPartiallyConfigured = !emailRecipients.isEmpty()
-                || (smtpServer != null && !smtpServer.isEmpty())
-                || (emailSender != null && !emailSender.isEmpty());
+        if (emailEnabled) {
+            List<String> emailRecipients = getConfig().getStringList("email-recipients");
+            String smtpServer = getConfig().getString("smtp.server");
+            int smtpPort = getConfig().getInt("smtp.port");
+            String smtpUsername = getConfig().getString("smtp.username");
+            String smtpPassword = getConfig().getString("smtp.password");
+            String emailSender = getConfig().getString("email.sender");
+            boolean useTLS = getConfig().getBoolean("smtp.use-tls", true);
+            String emailSubject = getConfig().getString("email.subject");
+            String emailBody = getConfig().getString("email.body");
 
-        if (emailProblems.isEmpty()) {
-            notifiers.add(new EmailNotifier(smtpServer, smtpPort, smtpUsername, smtpPassword, emailSender, useTLS,
-                    emailRecipients, emailSubject, emailBody));
-            getLogger().info("Email notifications enabled");
-        } else if (emailPartiallyConfigured) {
-            getLogger().warning("Email configuration is incomplete: " + String.join("; ", emailProblems)
-                    + ". Email notifications will be skipped.");
+            List<String> emailProblems = EmailNotifier.validateConfiguration(emailRecipients, smtpServer, smtpPort, emailSender);
+            boolean emailPartiallyConfigured = !emailRecipients.isEmpty()
+                    || (smtpServer != null && !smtpServer.isEmpty())
+                    || (emailSender != null && !emailSender.isEmpty());
+
+            if (emailProblems.isEmpty()) {
+                notifiers.add(new EmailNotifier(smtpServer, smtpPort, smtpUsername, smtpPassword, emailSender, useTLS,
+                        emailRecipients, emailSubject, emailBody));
+                getLogger().info("Email notifications enabled");
+            } else if (emailPartiallyConfigured) {
+                getLogger().warning("Email configuration is incomplete: " + String.join("; ", emailProblems)
+                        + ". Email notifications will be skipped.");
+            }
         }
 
         if (notifiers.isEmpty()) {

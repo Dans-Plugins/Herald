@@ -436,6 +436,58 @@ class HeraldIntegrationTest {
         }
     }
 
+    /**
+     * The default config.yml is the only place most operators ever discover an option,
+     * so a key that Herald reads but never ships is effectively undocumented. These
+     * tests read the shipped resource to keep the two from drifting apart.
+     */
+    @Nested
+    @DisplayName("Default Configuration File Tests")
+    class DefaultConfigurationFileTests {
+
+        /**
+         * @return the contents of the config.yml that ships inside the plugin JAR
+         */
+        private String readDefaultConfig() throws java.io.IOException {
+            try (java.io.InputStream stream = getClass().getResourceAsStream("/config.yml")) {
+                assertNotNull(stream, "config.yml should ship on the classpath");
+                return new String(stream.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+            }
+        }
+
+        @Test
+        @DisplayName("Both channels should ship an enabled toggle so neither has to be dismantled to be silenced")
+        void testBothChannelsShipAnEnabledToggle() throws java.io.IOException {
+            String config = readDefaultConfig();
+            int discordBlock = config.indexOf("discord:");
+            int emailBlock = config.indexOf("\nemail:");
+
+            assertTrue(discordBlock >= 0, "config.yml should carry a discord block");
+            assertTrue(emailBlock > discordBlock, "config.yml should carry an email block after the discord one");
+
+            int discordToggle = config.indexOf("enabled: false", discordBlock);
+            assertTrue(discordToggle > discordBlock && discordToggle < emailBlock,
+                    "discord.enabled should ship as false, leaving a fresh install quiet");
+            assertTrue(config.indexOf("enabled: true", emailBlock) > emailBlock,
+                    "email.enabled should ship as true, matching the default Herald falls back to");
+        }
+
+        @Test
+        @DisplayName("Every config key Herald reads should appear in the shipped config.yml")
+        void testEveryConfigKeyIsShipped() throws java.io.IOException {
+            String config = readDefaultConfig();
+
+            List<String> leafKeys = List.of("server-name", "webhook-url", "join-messages",
+                    "email-recipients", "server", "port", "username", "password", "use-tls",
+                    "sender", "subject", "body");
+
+            for (String key : leafKeys) {
+                assertTrue(config.contains(key + ":"),
+                        "config.yml should carry the '" + key + "' key an operator is expected to edit");
+            }
+        }
+    }
+
     @Nested
     @DisplayName("Notifier Display Name Tests")
     class NotifierDisplayNameTests {
