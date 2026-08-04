@@ -9,7 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Added
 
 - `email.subject` and `email.body` config options, so the email subject line and body can be customised the same way `discord.join-messages` already could. Both support `{player}`, `{server}` and `{time}` placeholders and fall back to the built-in defaults when absent or empty.
-- `email.enabled` config option, mirroring `discord.enabled`, so email notifications can be switched off without clearing the SMTP details, sender and recipient list. It defaults to `true`, leaving existing configurations behaving exactly as before.
+- `email.enabled` config option, mirroring `discord.enabled`, so email notifications can be switched off without clearing the SMTP details, sender and recipient list. It defaults to `true`, leaving existing configurations behaving exactly as before, and turning it off is reported at startup so the log still explains why no mail is arriving.
 
 ### Changed
 

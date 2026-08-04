@@ -152,7 +152,7 @@ smtp:
 
 **Type:** boolean
 **Default:** `true`
-**Description:** Whether email notifications are considered at all. Setting this to `false` turns email off while leaving `email-recipients`, the `smtp` block and the rest of the `email` block in place, so a working setup does not have to be retyped to be switched back on. While it is `false`, no email is sent and no incomplete-configuration warning is logged.
+**Description:** Whether email notifications are considered at all. Setting this to `false` turns email off while leaving `email-recipients`, the `smtp` block and the rest of the `email` block in place, so a working setup does not have to be retyped to be switched back on. While it is `false`, no email is sent and no incomplete-configuration warning is logged; `Email notifications are disabled in config` is logged at startup instead, so the reason no mail is arriving can be found in the log.
 
 Unlike `discord.enabled`, this defaults to `true`, so that a `config.yml` written before this key existed keeps sending the emails it sends today. A freshly generated `config.yml` still sends nothing, because `email-recipients`, `smtp.server` and `email.sender` are all empty.
 

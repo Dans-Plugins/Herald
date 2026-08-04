@@ -85,6 +85,11 @@ public final class Herald extends JavaPlugin implements Listener {
                 getLogger().warning("Email configuration is incomplete: " + String.join("; ", emailProblems)
                         + ". Email notifications will be skipped.");
             }
+        } else {
+            // Reported because 'email.enabled' defaults to true, so false is always a
+            // deliberate choice, and an operator asking why no mail arrives should find
+            // the answer in the log rather than in the absence of a line.
+            getLogger().info("Email notifications are disabled in config");
         }
 
         if (notifiers.isEmpty()) {
