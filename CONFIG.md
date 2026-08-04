@@ -48,6 +48,8 @@ discord:
 **Default:** 10 medieval-themed messages (see below)
 **Description:** A list of message templates picked at random when a player joins. Supports `{player}` and `{server}` placeholders. If the list is empty or absent, Herald falls back to built-in defaults.
 
+No entry may be blank or whitespace-only. Discord rejects an empty message, so a blank entry would fail only on the joins that happen to draw it; Herald therefore reports it at startup instead, naming its position in the list (counting from 1), and skips Discord notifications until it is fixed. To go back to the built-in defaults, remove the whole list rather than leaving blank entries in it.
+
 **Default messages:**
 
 ```yaml
@@ -144,6 +146,21 @@ smtp:
 ```yaml
 smtp:
   use-tls: true
+```
+
+## email.enabled
+
+**Type:** boolean
+**Default:** `true`
+**Description:** Whether email notifications are considered at all. Setting this to `false` turns email off while leaving `email-recipients`, the `smtp` block and the rest of the `email` block in place, so a working setup does not have to be retyped to be switched back on. While it is `false`, no email is sent and no incomplete-configuration warning is logged; `Email notifications are disabled in config` is logged at startup instead, so the reason no mail is arriving can be found in the log.
+
+Unlike `discord.enabled`, this defaults to `true`, so that a `config.yml` written before this key existed keeps sending the emails it sends today. A freshly generated `config.yml` still sends nothing, because `email-recipients`, `smtp.server` and `email.sender` are all empty.
+
+**Example:**
+
+```yaml
+email:
+  enabled: false
 ```
 
 ## email.sender

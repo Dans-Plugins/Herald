@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Added
 
 - `email.subject` and `email.body` config options, so the email subject line and body can be customised the same way `discord.join-messages` already could. Both support `{player}`, `{server}` and `{time}` placeholders and fall back to the built-in defaults when absent or empty.
+- `email.enabled` config option, mirroring `discord.enabled`, so email notifications can be switched off without clearing the SMTP details, sender and recipient list. It defaults to `true`, leaving existing configurations behaving exactly as before, and turning it off is reported at startup so the log still explains why no mail is arriving.
 
 ### Changed
 
@@ -17,6 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Startup now warns when email notifications are partially configured, naming each missing or invalid key (`email-recipients`, `smtp.server`, `smtp.port`, `email.sender`) instead of logging `Email notifications enabled` and then failing on every player join.
 - Startup validation now checks that `discord.webhook-url` is a syntactically valid `http`/`https` URL, so a webhook URL with the scheme left off is reported once at startup instead of failing on every player join. The warning explains why the URL is invalid without repeating the URL itself, so the webhook token never reaches the server log.
 - Startup validation now checks that every address in `email-recipients` and the `email.sender` address are parseable, naming the offending address, instead of failing on every player join.
+- Startup validation now checks that no entry in `discord.join-messages` is blank, naming the offending entry by its position in the list, so an empty template is reported once at startup instead of failing on the joins that happen to draw it.
 - Startup now warns when no notification method is configured at all, so a default install no longer looks healthy while doing nothing.
 - Discord webhook failures now include the error response body (e.g. `Invalid Webhook Token`) alongside the HTTP status code.
 - Notifier failures are logged through the plugin logger with their stack trace instead of being printed to standard error.

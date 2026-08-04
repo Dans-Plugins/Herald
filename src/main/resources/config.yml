@@ -9,6 +9,7 @@ discord:
   enabled: false       # Set to true to enable Discord notifications
   webhook-url: ""      # Discord webhook URL for the channel you want to send notifications to
   join-messages:       # List of join messages picked at random. Supports {player} and {server} placeholders.
+                       # No entry may be blank. Delete the list entirely to use the defaults below.
     - "⚔️ Hear ye, hear ye! **{player}** hath entered the realm of **{server}**! ⚔️"
     - "🏰 The gates of **{server}** open wide for **{player}**! Welcome, brave soul!"
     - "📜 By royal decree, **{player}** hath been granted passage into **{server}**!"
@@ -21,6 +22,8 @@ discord:
     - "✨ By the stars above, **{player}** hath made their presence known in **{server}**!"
 
 # Email Configuration (optional)
+# Set email.enabled below to false to switch all of this off without clearing it.
+
 # Email Recipients
 # List of email addresses to notify when a player joins
 email-recipients: []
@@ -34,6 +37,7 @@ smtp:
   use-tls: true        # Set to true if using port 587
 
 email:
+  enabled: true        # Set to false to disable email notifications, keeping the settings above and below
   sender: ""           # The email address to send notifications from
   # Subject and body of the notification email. Both support {player}, {server}
   # and {time} placeholders. Leave empty to use the built-in defaults shown here.

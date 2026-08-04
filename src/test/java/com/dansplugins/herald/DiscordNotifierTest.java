@@ -986,6 +986,137 @@ class DiscordNotifierTest {
     }
 
     @Nested
+    @DisplayName("Join Message Validation Tests")
+    class JoinMessageValidationTests {
+
+        private static final String VALID_URL = "https://discord.com/api/webhooks/123/abc";
+
+        @Test
+        @DisplayName("validateConfiguration should accept a list of usable templates")
+        void testValidateConfigurationWithUsableTemplates() {
+            assertTrue(DiscordNotifier.validateConfiguration(VALID_URL,
+                    List.of("{player} joined {server}", "Welcome {player}!")).isEmpty());
+        }
+
+        @Test
+        @DisplayName("validateConfiguration should accept an absent join message list")
+        void testValidateConfigurationWithNullTemplates() {
+            assertTrue(DiscordNotifier.validateConfiguration(VALID_URL, null).isEmpty(),
+                    "An absent list falls back to the built-in defaults, which are usable");
+        }
+
+        @Test
+        @DisplayName("validateConfiguration should accept an empty join message list")
+        void testValidateConfigurationWithEmptyTemplateList() {
+            assertTrue(DiscordNotifier.validateConfiguration(VALID_URL, Collections.emptyList()).isEmpty(),
+                    "An empty list falls back to the built-in defaults, which are usable");
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"", " ", "\t", "\n", "   \t  "})
+        @DisplayName("validateConfiguration should report a blank join message")
+        void testValidateConfigurationWithBlankTemplate(String blank) {
+            List<String> problems = DiscordNotifier.validateConfiguration(VALID_URL, List.of(blank));
+
+            assertEquals(1, problems.size(), "Expected exactly one problem, got: " + problems);
+            assertTrue(problems.get(0).contains("discord.join-messages"),
+                    "Problem should name the config key: " + problems.get(0));
+        }
+
+        @Test
+        @DisplayName("validateConfiguration should report a null join message entry")
+        void testValidateConfigurationWithNullTemplateEntry() {
+            List<String> withNull = new java.util.ArrayList<>();
+            withNull.add("{player} joined {server}");
+            withNull.add(null);
+
+            List<String> problems = DiscordNotifier.validateConfiguration(VALID_URL, withNull);
+
+            assertEquals(1, problems.size(), "Expected exactly one problem, got: " + problems);
+            assertTrue(problems.get(0).contains("entry 2"),
+                    "Problem should name the position of the null entry: " + problems.get(0));
+        }
+
+        @Test
+        @DisplayName("Blank join message should be named by its 1-based position in the list")
+        void testBlankTemplateIsNamedByPosition() {
+            List<String> problems = DiscordNotifier.validateConfiguration(VALID_URL,
+                    List.of("{player} joined {server}", "Welcome {player}!", "  "));
+
+            assertEquals(1, problems.size(), "Expected exactly one problem, got: " + problems);
+            assertTrue(problems.get(0).contains("entry 3"),
+                    "Third entry should be reported as entry 3, not entry 2: " + problems.get(0));
+        }
+
+        @Test
+        @DisplayName("validateConfiguration should report every blank join message, not just the first")
+        void testEveryBlankTemplateIsReported() {
+            List<String> problems = DiscordNotifier.validateConfiguration(VALID_URL,
+                    List.of("", "Welcome {player}!", ""));
+
+            assertEquals(2, problems.size(), "Expected two problems, got: " + problems);
+            assertTrue(problems.get(0).contains("entry 1"), "First problem should be entry 1: " + problems.get(0));
+            assertTrue(problems.get(1).contains("entry 3"), "Second problem should be entry 3: " + problems.get(1));
+        }
+
+        @Test
+        @DisplayName("validateConfiguration should report a blank join message alongside an unusable URL")
+        void testBlankTemplateReportedAlongsideBadUrl() {
+            List<String> problems = DiscordNotifier.validateConfiguration("", List.of(""));
+
+            assertEquals(2, problems.size(),
+                    "Both keys should be reported in one startup pass, got: " + problems);
+            assertTrue(problems.get(0).contains("discord.webhook-url"),
+                    "URL problem should be reported: " + problems.get(0));
+            assertTrue(problems.get(1).contains("discord.join-messages"),
+                    "Join message problem should be reported: " + problems.get(1));
+        }
+
+        @Test
+        @DisplayName("The URL-only overload should validate against the built-in defaults")
+        void testUrlOnlyOverloadUsesDefaults() {
+            assertEquals(DiscordNotifier.validateConfiguration(VALID_URL, null),
+                    DiscordNotifier.validateConfiguration(VALID_URL));
+        }
+
+        @Test
+        @DisplayName("The built-in default join messages should pass validation")
+        void testDefaultJoinMessagesAreValid() {
+            assertTrue(DiscordNotifier.validateConfiguration(VALID_URL,
+                    DiscordNotifier.DEFAULT_JOIN_MESSAGES).isEmpty(),
+                    "The defaults Herald falls back to must themselves be sendable");
+        }
+
+        @Test
+        @DisplayName("A blank template is kept and sent as the empty message Discord rejects")
+        void testBlankTemplateWouldBeSentAsAnEmptyMessage() throws IOException {
+            List<String> requestBodies = new java.util.ArrayList<>();
+            HttpServer stub = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+            stub.createContext("/webhook", exchange -> {
+                requestBodies.add(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+                exchange.sendResponseHeaders(204, -1);
+                exchange.close();
+            });
+            stub.start();
+            String url = "http://127.0.0.1:" + stub.getAddress().getPort() + "/webhook";
+
+            try {
+                // A list holding only a blank entry is non-empty, so the constructor keeps it
+                // instead of falling back to DEFAULT_JOIN_MESSAGES
+                new DiscordNotifier(url, List.of("   ")).notifyPlayerJoin("Steve", "TestServer");
+            } finally {
+                stub.stop(0);
+            }
+
+            assertEquals(1, requestBodies.size(), "The webhook should have been called once");
+            assertEquals("{\"content\": \"   \"}", requestBodies.get(0),
+                    "A blank template is sent verbatim, which is the failure startup validation prevents");
+            assertFalse(DiscordNotifier.validateConfiguration(url, List.of("   ")).isEmpty(),
+                    "Startup validation should reject the template before it is ever sent");
+        }
+    }
+
+    @Nested
     @DisplayName("Webhook Error Response Tests")
     class WebhookErrorResponseTests {
 
