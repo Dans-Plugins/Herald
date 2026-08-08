@@ -4,7 +4,7 @@ plugins {
 }
 
 group = 'com.dansplugins'
-version = '1.0.0'
+version = '2.0.0-SNAPSHOT-8-8-2026'
 
 repositories {
     mavenCentral()
