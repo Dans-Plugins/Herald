@@ -64,7 +64,7 @@ public class DiscordNotifier implements Notifier {
 
     /**
      * Check the configuration keys Discord notifications require, against the
-     * built-in join messages.
+     * built-in join messages and a server name sized as if it were empty.
      *
      * @param webhookUrl the configured {@code discord.webhook-url}
      * @return a list of human-readable problems, empty when the configuration is complete
@@ -75,8 +75,8 @@ public class DiscordNotifier implements Notifier {
     }
 
     /**
-     * Check the configuration keys Discord notifications require, against a
-     * server name that contributes nothing to the length of a message.
+     * Check the configuration keys Discord notifications require, sizing the
+     * templates as if the server name were empty.
      *
      * @param webhookUrl   the configured {@code discord.webhook-url}
      * @param joinMessages the configured {@code discord.join-messages}, or {@code null} for the defaults
