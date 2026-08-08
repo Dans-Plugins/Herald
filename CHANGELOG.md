@@ -19,6 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Startup validation now checks that `discord.webhook-url` is a syntactically valid `http`/`https` URL, so a webhook URL with the scheme left off is reported once at startup instead of failing on every player join. The warning explains why the URL is invalid without repeating the URL itself, so the webhook token never reaches the server log.
 - Startup validation now checks that every address in `email-recipients` and the `email.sender` address are parseable, naming the offending address, instead of failing on every player join.
 - Startup validation now checks that no entry in `discord.join-messages` is blank, naming the offending entry by its position in the list, so an empty template is reported once at startup instead of failing on the joins that happen to draw it.
+- Startup validation now checks that no entry in `discord.join-messages` can produce a message longer than Discord's 2000-character limit, measured against the configured `server-name` and the longest player name a Minecraft Java Edition account allows, so an over-long template is reported once at startup instead of failing on the joins that happen to draw it.
 - Startup now warns when no notification method is configured at all, so a default install no longer looks healthy while doing nothing.
 - Discord webhook failures now include the error response body (e.g. `Invalid Webhook Token`) alongside the HTTP status code.
 - Notifier failures are logged through the plugin logger with their stack trace instead of being printed to standard error.
@@ -27,6 +28,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 - Email notification body now includes the server name (e.g. `Steve has joined MySurvivalServer at <date>`) instead of the generic `"the server"`.
 - `server-name` is now cached at plugin load time rather than re-read from config on every player join event.
+- A `server-name` holding nothing but whitespace now falls back to `Minecraft` instead of being sent verbatim, which rendered as bold markdown wrapped around nothing in Discord and as a gap in the email subject. Whitespace around a populated name is stripped for the same reason.
 - `DiscordNotifier` no longer uses the deprecated `URL(String)` constructor, removing a compiler deprecation warning on every build.
 
 ## [1.0.0]
