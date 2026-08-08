@@ -1,7 +1,7 @@
 # Herald Configuration
 
 # Server name used in notification messages (replaces {server} placeholder).
-# If left empty, defaults to "Minecraft".
+# If left empty, or set to nothing but spaces, defaults to "Minecraft".
 server-name: ""
 
 # Discord Configuration (flagship feature)
@@ -9,7 +9,8 @@ discord:
   enabled: false       # Set to true to enable Discord notifications
   webhook-url: ""      # Discord webhook URL for the channel you want to send notifications to
   join-messages:       # List of join messages picked at random. Supports {player} and {server} placeholders.
-                       # No entry may be blank. Delete the list entirely to use the defaults below.
+                       # No entry may be blank, and none may exceed Discord's 2000-character limit
+                       # once filled in. Delete the list entirely to use the defaults below.
     - "⚔️ Hear ye, hear ye! **{player}** hath entered the realm of **{server}**! ⚔️"
     - "🏰 The gates of **{server}** open wide for **{player}**! Welcome, brave soul!"
     - "📜 By royal decree, **{player}** hath been granted passage into **{server}**!"

@@ -12,7 +12,7 @@ import java.util.logging.Level;
 public final class Herald extends JavaPlugin implements Listener {
 
     private final List<Notifier> notifiers = new ArrayList<>();
-    private String serverName = "Minecraft";
+    private String serverName = ServerName.DEFAULT;
 
     @Override
     public void onEnable() {
@@ -37,8 +37,7 @@ public final class Herald extends JavaPlugin implements Listener {
         notifiers.clear();
 
         // Cache server name with fallback
-        String configServerName = getConfig().getString("server-name", "");
-        serverName = (configServerName != null && !configServerName.isEmpty()) ? configServerName : "Minecraft";
+        serverName = ServerName.resolve(getConfig().getString("server-name", ""));
 
         // Load Discord settings (primary notification method)
         boolean discordEnabled = getConfig().getBoolean("discord.enabled", false);
@@ -46,7 +45,7 @@ public final class Herald extends JavaPlugin implements Listener {
         List<String> discordJoinMessages = getConfig().getStringList("discord.join-messages");
 
         if (discordEnabled) {
-            List<String> discordProblems = DiscordNotifier.validateConfiguration(discordWebhookUrl, discordJoinMessages);
+            List<String> discordProblems = DiscordNotifier.validateConfiguration(discordWebhookUrl, discordJoinMessages, serverName);
             if (discordProblems.isEmpty()) {
                 notifiers.add(new DiscordNotifier(discordWebhookUrl, discordJoinMessages));
                 getLogger().info("Discord notifications enabled");

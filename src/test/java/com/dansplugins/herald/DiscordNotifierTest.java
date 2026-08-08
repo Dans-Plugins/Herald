@@ -1117,6 +1117,153 @@ class DiscordNotifierTest {
     }
 
     @Nested
+    @DisplayName("Join Message Length Validation Tests")
+    class JoinMessageLengthValidationTests {
+
+        private static final String VALID_URL = "https://discord.com/api/webhooks/123/abc";
+
+        /**
+         * Build a template that fills out to exactly the given length.
+         *
+         * @param filledLength the length the template should reach once {@code {player}} is
+         *                     filled with a name of the maximum length
+         * @return a template holding one {@code {player}} placeholder
+         */
+        private String templateFillingTo(int filledLength) {
+            return "{player}" + "x".repeat(filledLength - DiscordNotifier.MAX_PLAYER_NAME_LENGTH);
+        }
+
+        @Test
+        @DisplayName("A template that fills to exactly the limit should be accepted")
+        void testTemplateAtTheLimitIsAccepted() {
+            List<String> problems = DiscordNotifier.validateConfiguration(VALID_URL,
+                    List.of(templateFillingTo(DiscordNotifier.MAX_MESSAGE_LENGTH)), "Server");
+
+            assertTrue(problems.isEmpty(), "A message Discord accepts should not be reported: " + problems);
+        }
+
+        @Test
+        @DisplayName("A template that fills to one character over the limit should be reported")
+        void testTemplateOverTheLimitIsReported() {
+            List<String> problems = DiscordNotifier.validateConfiguration(VALID_URL,
+                    List.of(templateFillingTo(DiscordNotifier.MAX_MESSAGE_LENGTH + 1)), "Server");
+
+            assertEquals(1, problems.size(), "Expected one problem, got: " + problems);
+            assertTrue(problems.get(0).contains("'discord.join-messages'"),
+                    "The problem should name the key an operator edits: " + problems.get(0));
+            assertTrue(problems.get(0).contains(String.valueOf(DiscordNotifier.MAX_MESSAGE_LENGTH + 1)),
+                    "The problem should state how long the message would be: " + problems.get(0));
+            assertTrue(problems.get(0).contains(String.valueOf(DiscordNotifier.MAX_MESSAGE_LENGTH)),
+                    "The problem should state the limit: " + problems.get(0));
+        }
+
+        @Test
+        @DisplayName("An over-long template should be named by its position in the list")
+        void testOverLongTemplateIsNamedByPosition() {
+            List<String> problems = DiscordNotifier.validateConfiguration(VALID_URL,
+                    List.of("Welcome {player}!",
+                            "{player} arrived at {server}",
+                            templateFillingTo(DiscordNotifier.MAX_MESSAGE_LENGTH + 500)),
+                    "Server");
+
+            assertEquals(1, problems.size(), "Expected one problem, got: " + problems);
+            assertTrue(problems.get(0).contains("entry 3"),
+                    "The third entry should be named, counting from one: " + problems.get(0));
+        }
+
+        @Test
+        @DisplayName("A long server name should push an otherwise acceptable template over the limit")
+        void testLongServerNamePushesTemplateOverTheLimit() {
+            List<String> templates = List.of("{player} has entered {server}!");
+
+            assertTrue(DiscordNotifier.validateConfiguration(VALID_URL, templates, "Server").isEmpty(),
+                    "The template is well within the limit under an ordinary server name");
+            assertFalse(DiscordNotifier.validateConfiguration(VALID_URL, templates,
+                            "S".repeat(DiscordNotifier.MAX_MESSAGE_LENGTH)).isEmpty(),
+                    "The same template should be reported once the server name fills it past the limit");
+        }
+
+        @Test
+        @DisplayName("Every occurrence of a placeholder should count towards the length")
+        void testRepeatedPlaceholdersAreCounted() {
+            // Three {server} placeholders, each growing by 500 characters once filled
+            String template = "{server}{server}{server}" + "x".repeat(500);
+
+            List<String> problems = DiscordNotifier.validateConfiguration(VALID_URL, List.of(template),
+                    "S".repeat(508));
+
+            assertEquals(1, problems.size(),
+                    "Three placeholders of 508 characters each should breach the limit: " + problems);
+        }
+
+        @Test
+        @DisplayName("A template shorter once filled than it is written should be accepted")
+        void testShortServerNameShrinksTheTemplate() {
+            // "{server}" is eight characters; a one-character server name makes the message shorter
+            String template = "{server}".repeat(300);
+
+            assertTrue(DiscordNotifier.validateConfiguration(VALID_URL, List.of(template), "S").isEmpty(),
+                    "A template of 2400 characters filling out to 300 should be accepted");
+        }
+
+        @Test
+        @DisplayName("An over-long template should be reported alongside a blank one")
+        void testOverLongAndBlankTemplatesAreBothReported() {
+            List<String> problems = DiscordNotifier.validateConfiguration(VALID_URL,
+                    List.of("   ", templateFillingTo(DiscordNotifier.MAX_MESSAGE_LENGTH + 1)), "Server");
+
+            assertEquals(2, problems.size(), "Both entries should be reported in one pass: " + problems);
+            assertTrue(problems.get(0).contains("entry 1") && problems.get(0).contains("blank"),
+                    "The blank entry should be reported first: " + problems.get(0));
+            assertTrue(problems.get(1).contains("entry 2") && problems.get(1).contains("characters"),
+                    "The over-long entry should be reported second: " + problems.get(1));
+        }
+
+        @Test
+        @DisplayName("A blank entry should be reported as blank rather than measured")
+        void testBlankTemplateIsNotAlsoMeasured() {
+            List<String> problems = DiscordNotifier.validateConfiguration(VALID_URL, List.of(""), "Server");
+
+            assertEquals(1, problems.size(), "A blank entry should raise one problem, not two: " + problems);
+            assertTrue(problems.get(0).contains("blank"), "The problem should be about blankness: " + problems.get(0));
+        }
+
+        @Test
+        @DisplayName("The built-in defaults should stay within the limit under a long server name")
+        void testDefaultsSurviveALongServerName() {
+            assertTrue(DiscordNotifier.validateConfiguration(VALID_URL,
+                            DiscordNotifier.DEFAULT_JOIN_MESSAGES, "S".repeat(200)).isEmpty(),
+                    "The defaults Herald falls back to must stay sendable under a long server name");
+        }
+
+        @Test
+        @DisplayName("The overload without a server name should size templates as if it were empty")
+        void testOverloadWithoutServerNameSizesAsEmpty() {
+            String template = "{server}" + "x".repeat(DiscordNotifier.MAX_MESSAGE_LENGTH - 3);
+
+            assertTrue(DiscordNotifier.validateConfiguration(VALID_URL, List.of(template)).isEmpty(),
+                    "An empty server name should shrink the template below the limit");
+            assertFalse(DiscordNotifier.validateConfiguration(VALID_URL, List.of(template), "Server").isEmpty(),
+                    "A real server name should push the same template past the limit");
+        }
+
+        @Test
+        @DisplayName("A validated template should be sendable as the message it produces")
+        void testValidatedTemplateProducesASendableMessage() {
+            String serverName = "MySurvivalServer";
+            String template = templateFillingTo(DiscordNotifier.MAX_MESSAGE_LENGTH);
+            assertTrue(DiscordNotifier.validateConfiguration(VALID_URL, List.of(template), serverName).isEmpty());
+
+            String filled = template
+                    .replace("{player}", "x".repeat(DiscordNotifier.MAX_PLAYER_NAME_LENGTH))
+                    .replace("{server}", serverName);
+
+            assertEquals(DiscordNotifier.MAX_MESSAGE_LENGTH, filled.length(),
+                    "The measured worst case should match the message that is actually sent");
+        }
+    }
+
+    @Nested
     @DisplayName("Webhook Error Response Tests")
     class WebhookErrorResponseTests {
 

@@ -10,6 +10,8 @@ Options are listed in the same order they appear in the default configuration fi
 **Default:** `""`
 **Description:** The server name used in notification messages. Replaces the `{server}` placeholder in Discord join messages and in email notifications. If left empty, defaults to `"Minecraft"`.
 
+A value holding nothing but whitespace counts as empty and falls back to `"Minecraft"` too, rather than being sent as a name made of spaces. Whitespace around a name that does hold something is stripped, so `"  My Server  "` and `"My Server"` behave identically.
+
 **Example:**
 
 ```yaml
@@ -49,6 +51,14 @@ discord:
 **Description:** A list of message templates picked at random when a player joins. Supports `{player}` and `{server}` placeholders. If the list is empty or absent, Herald falls back to built-in defaults.
 
 No entry may be blank or whitespace-only. Discord rejects an empty message, so a blank entry would fail only on the joins that happen to draw it; Herald therefore reports it at startup instead, naming its position in the list (counting from 1), and skips Discord notifications until it is fixed. To go back to the built-in defaults, remove the whole list rather than leaving blank entries in it.
+
+No entry may produce a message longer than **2000 characters**, which is the most Discord accepts. Herald measures each entry at startup against the longest message it could produce — every `{server}` placeholder filled with the configured `server-name`, and every `{player}` placeholder filled with a 16-character player name, the longest a Minecraft Java Edition account allows — and reports any entry that would breach the limit, again naming its position in the list:
+
+```
+'discord.join-messages' entry 3 can produce a message of up to 2143 characters, but Discord accepts at most 2000
+```
+
+A long `server-name` counts towards this, so an entry that fits under one server name may not fit under another.
 
 **Default messages:**
 

@@ -33,7 +33,7 @@
 
 ### Customising Discord Join Messages
 
-Edit the `discord.join-messages` list in `config.yml`. Each entry is a template that supports `{player}` and `{server}` placeholders. A random message is chosen each time a player joins.
+Edit the `discord.join-messages` list in `config.yml`. Each entry is a template that supports `{player}` and `{server}` placeholders. A random message is chosen each time a player joins. No entry may be left blank, and none may grow past 2000 characters once its placeholders are filled in — Discord will not accept a message that long, so Herald reports the offending entry at startup.
 
 ```yaml
 discord:
@@ -83,7 +83,7 @@ Herald reports what it loaded in the server log at startup:
 
 - `Discord notifications enabled` / `Email notifications enabled` — that integration is active.
 - `Email notifications are disabled in config` — `email.enabled` is `false`. Because that key defaults to `true`, this line only appears when it has been turned off deliberately. Setting `discord.enabled` to `false` logs nothing, since that is the shipped default.
-- `Discord notifications are enabled in config, but the configuration is incomplete: ...` — `discord.enabled` is `true` but a required key is missing or unusable; the message names the key. A `discord.webhook-url` that is not a valid `http`/`https` URL is reported here, not on the first player join, as is a blank entry in `discord.join-messages`, which is named by its position in the list.
+- `Discord notifications are enabled in config, but the configuration is incomplete: ...` — `discord.enabled` is `true` but a required key is missing or unusable; the message names the key. A `discord.webhook-url` that is not a valid `http`/`https` URL is reported here, not on the first player join, as is a blank entry in `discord.join-messages`, or one long enough to breach Discord's 2000-character message limit once filled in; either is named by its position in the list.
 - `Email configuration is incomplete: ...` — some email settings are filled in but not all, `smtp.port` is outside the valid range, or an address in `email-recipients` or `email.sender` cannot be parsed; the message names each missing or invalid key, and quotes the offending address where one is at fault.
 - `No notification methods are configured, so Herald will not send any notifications.` — nothing is set up yet, which is the state of a freshly generated `config.yml`.
 

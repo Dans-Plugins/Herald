@@ -34,6 +34,18 @@ public class DiscordNotifier implements Notifier {
     /** Maximum number of characters of an error response body included in failure messages. */
     static final int MAX_ERROR_BODY_LENGTH = 500;
 
+    /** Maximum number of characters Discord accepts in the content of a webhook message. */
+    static final int MAX_MESSAGE_LENGTH = 2000;
+
+    /** Longest a Minecraft Java Edition player name can be, which sizes the worst case of a template. */
+    static final int MAX_PLAYER_NAME_LENGTH = 16;
+
+    /** The placeholder replaced with the name of the player who joined. */
+    private static final String PLAYER_PLACEHOLDER = "{player}";
+
+    /** The placeholder replaced with the name of the server they joined. */
+    private static final String SERVER_PLACEHOLDER = "{server}";
+
     private final String webhookUrl;
     private final List<String> joinMessages;
     private final Random random;
@@ -52,14 +64,27 @@ public class DiscordNotifier implements Notifier {
 
     /**
      * Check the configuration keys Discord notifications require, against the
-     * built-in join messages.
+     * built-in join messages and a server name sized as if it were empty.
      *
      * @param webhookUrl the configured {@code discord.webhook-url}
      * @return a list of human-readable problems, empty when the configuration is complete
-     * @see #validateConfiguration(String, List)
+     * @see #validateConfiguration(String, List, String)
      */
     public static List<String> validateConfiguration(String webhookUrl) {
         return validateConfiguration(webhookUrl, null);
+    }
+
+    /**
+     * Check the configuration keys Discord notifications require, sizing the
+     * templates as if the server name were empty.
+     *
+     * @param webhookUrl   the configured {@code discord.webhook-url}
+     * @param joinMessages the configured {@code discord.join-messages}, or {@code null} for the defaults
+     * @return a list of human-readable problems, empty when the configuration is complete
+     * @see #validateConfiguration(String, List, String)
+     */
+    public static List<String> validateConfiguration(String webhookUrl, List<String> joinMessages) {
+        return validateConfiguration(webhookUrl, joinMessages, null);
     }
 
     /**
@@ -69,15 +94,20 @@ public class DiscordNotifier implements Notifier {
      * reported here because {@link #sendMessage(String)} would otherwise only
      * discover it when the first player joins, and a blank message template is
      * reported for the same reason: Discord rejects an empty message, so a
-     * blank entry fails on the joins that happen to draw it and no others.
+     * blank entry fails on the joins that happen to draw it and no others. A
+     * template long enough to breach {@link #MAX_MESSAGE_LENGTH} once filled is
+     * reported for the same reason again, which is why the server name that
+     * will fill its {@code {server}} placeholder is needed here.
      *
      * @param webhookUrl   the configured {@code discord.webhook-url}
      * @param joinMessages the configured {@code discord.join-messages}, or {@code null} for the defaults
+     * @param serverName   the resolved server name the {@code {server}} placeholder will be
+     *                     filled with, or {@code null} to size the templates as if it were empty
      * @return a list of human-readable problems, empty when the configuration is complete
      */
-    public static List<String> validateConfiguration(String webhookUrl, List<String> joinMessages) {
+    public static List<String> validateConfiguration(String webhookUrl, List<String> joinMessages, String serverName) {
         List<String> problems = new ArrayList<>(validateWebhookUrl(webhookUrl));
-        problems.addAll(validateJoinMessages(joinMessages));
+        problems.addAll(validateJoinMessages(joinMessages, serverName));
         return problems;
     }
 
@@ -111,15 +141,17 @@ public class DiscordNotifier implements Notifier {
     /**
      * Check that every configured message template can actually be sent.
      * An absent or empty list is fine, because the constructor falls back to
-     * {@link #DEFAULT_JOIN_MESSAGES} in that case; a list holding a blank entry
-     * is not, because that entry is kept and would be sent as an empty message.
-     * Positions are reported 1-based so the offending line can be found in
-     * {@code config.yml} without counting from zero.
+     * {@link #DEFAULT_JOIN_MESSAGES} in that case, and those defaults are short
+     * enough to send under any server name an operator would plausibly type; a
+     * list holding a blank entry is not fine, because that entry is kept and
+     * would be sent as an empty message. Positions are reported 1-based so the
+     * offending line can be found in {@code config.yml} without counting from zero.
      *
      * @param joinMessages the configured {@code discord.join-messages}
+     * @param serverName   the server name the {@code {server}} placeholder will be filled with
      * @return the problems with the message templates, empty when they are all usable
      */
-    private static List<String> validateJoinMessages(List<String> joinMessages) {
+    private static List<String> validateJoinMessages(List<String> joinMessages, String serverName) {
         List<String> problems = new ArrayList<>();
         if (joinMessages == null) {
             return problems;
@@ -128,9 +160,51 @@ public class DiscordNotifier implements Notifier {
             String message = joinMessages.get(i);
             if (message == null || message.trim().isEmpty()) {
                 problems.add("'discord.join-messages' entry " + (i + 1) + " is blank");
+                continue;
+            }
+            int longestFilled = longestFilledLength(message, serverName);
+            if (longestFilled > MAX_MESSAGE_LENGTH) {
+                problems.add("'discord.join-messages' entry " + (i + 1) + " can produce a message of up to "
+                        + longestFilled + " characters, but Discord accepts at most " + MAX_MESSAGE_LENGTH);
             }
         }
         return problems;
+    }
+
+    /**
+     * Work out how long the longest message a template can produce would be.
+     * The server name is known at startup, and the only other variable is the
+     * player name, which a Minecraft Java Edition account caps at
+     * {@link #MAX_PLAYER_NAME_LENGTH} characters, so the worst case is exact
+     * rather than an estimate. Length is counted the same way Discord counts it
+     * when enforcing its own limit, in UTF-16 code units, so a template of
+     * emoji is measured as Discord will measure it.
+     *
+     * @param template   the message template
+     * @param serverName the server name the {@code {server}} placeholder will be filled with,
+     *                   or {@code null} to size the template as if it were empty
+     * @return the length of the longest message the template can produce
+     */
+    private static int longestFilledLength(String template, String serverName) {
+        int serverNameLength = serverName != null ? serverName.length() : 0;
+        return template.length()
+                + countOccurrences(template, PLAYER_PLACEHOLDER)
+                        * (MAX_PLAYER_NAME_LENGTH - PLAYER_PLACEHOLDER.length())
+                + countOccurrences(template, SERVER_PLACEHOLDER)
+                        * (serverNameLength - SERVER_PLACEHOLDER.length());
+    }
+
+    /**
+     * @param text   the text to search
+     * @param needle the substring to count
+     * @return the number of non-overlapping occurrences of {@code needle} in {@code text}
+     */
+    private static int countOccurrences(String text, String needle) {
+        int count = 0;
+        for (int index = text.indexOf(needle); index >= 0; index = text.indexOf(needle, index + needle.length())) {
+            count++;
+        }
+        return count;
     }
 
     /**
@@ -167,7 +241,7 @@ public class DiscordNotifier implements Notifier {
     @Override
     public void notifyPlayerJoin(String playerName, String serverName) throws IOException {
         String template = joinMessages.get(random.nextInt(joinMessages.size()));
-        String content = template.replace("{player}", playerName).replace("{server}", serverName);
+        String content = template.replace(PLAYER_PLACEHOLDER, playerName).replace(SERVER_PLACEHOLDER, serverName);
         sendMessage(content);
     }
 
