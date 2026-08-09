@@ -1562,13 +1562,27 @@ class DiscordNotifierTest {
                     StubResponse.accepted());
             DiscordNotifier notifier = new DiscordNotifier(url, null, logger);
 
-            long startedAt = System.nanoTime();
             assertDoesNotThrow(() -> notifier.sendMessage("hello"));
-            long elapsedMillis = (System.nanoTime() - startedAt) / 1_000_000;
 
             assertEquals(2, requestBodies.size(), "The message should have been sent twice");
-            assertTrue(elapsedMillis < DiscordNotifier.DEFAULT_RETRY_AFTER_MILLIS,
-                    "The body should have been believed over the default: " + elapsedMillis + "ms");
+            // Read from the warning rather than from the clock: what is under test is which
+            // delay was believed, not how long two loopback round trips happened to take.
+            assertEquals(1, warnings().size(), "One warning should be written: " + warnings());
+            assertTrue(warnings().get(0).contains("50ms"),
+                    "The body should have been believed over the default: " + warnings().get(0));
+        }
+
+        @Test
+        @DisplayName("A retry should survive a notifier built without a logger")
+        void testRetryWithoutALogger() throws IOException {
+            String url = startStubWebhook(
+                    StubResponse.rateLimited("0.05", String.format(RATE_LIMIT_BODY, "0.05")),
+                    StubResponse.accepted());
+            DiscordNotifier notifier = new DiscordNotifier(url, null, (Logger) null);
+
+            assertDoesNotThrow(() -> notifier.sendMessage("hello"));
+
+            assertEquals(2, requestBodies.size(), "The message should still have been retried and delivered");
         }
 
         @Test

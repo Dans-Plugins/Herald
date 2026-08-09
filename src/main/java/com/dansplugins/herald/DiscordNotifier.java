@@ -100,7 +100,10 @@ public class DiscordNotifier implements Notifier {
                 ? Collections.unmodifiableList(new ArrayList<>(joinMessages))
                 : DEFAULT_JOIN_MESSAGES;
         this.random = random;
-        this.logger = logger;
+        // Defaulted here rather than trusted, because the only code path that reads it
+        // is the rate-limited one, so a null would surface as a failure to survive the
+        // very condition the retry exists for.
+        this.logger = logger != null ? logger : Logger.getLogger(DiscordNotifier.class.getName());
     }
 
     /**
