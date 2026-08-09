@@ -15,6 +15,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
+import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class DiscordNotifier implements Notifier {
     
@@ -40,6 +43,24 @@ public class DiscordNotifier implements Notifier {
     /** Longest a Minecraft Java Edition player name can be, which sizes the worst case of a template. */
     static final int MAX_PLAYER_NAME_LENGTH = 16;
 
+    /** The status Discord answers with when the webhook has been asked for too much, too quickly. */
+    static final int RATE_LIMITED_STATUS = 429;
+
+    /**
+     * Longest Herald waits out a rate limit before giving up on a message.
+     * A rate-limited send is retried from an asynchronous task, so waiting costs
+     * nothing the server thread notices, but an unbounded wait would let one
+     * pathological {@code Retry-After} park that task indefinitely.
+     */
+    static final long MAX_RETRY_AFTER_MILLIS = 10_000L;
+
+    /** How long to wait when a rate-limited response states no usable delay of its own. */
+    static final long DEFAULT_RETRY_AFTER_MILLIS = 1_000L;
+
+    /** The {@code retry_after} field Discord repeats in the JSON body of a rate-limited response. */
+    private static final Pattern RETRY_AFTER_FIELD =
+            Pattern.compile("\"retry_after\"\\s*:\\s*([0-9]+(?:\\.[0-9]+)?)");
+
     /** The placeholder replaced with the name of the player who joined. */
     private static final String PLAYER_PLACEHOLDER = "{player}";
 
@@ -49,17 +70,40 @@ public class DiscordNotifier implements Notifier {
     private final String webhookUrl;
     private final List<String> joinMessages;
     private final Random random;
+    private final Logger logger;
 
     public DiscordNotifier(String webhookUrl, List<String> joinMessages) {
         this(webhookUrl, joinMessages, new Random());
     }
 
+    /**
+     * Build a notifier that reports transient trouble through the given logger.
+     * The plugin logger is passed here so that a rate-limit warning reaches the
+     * server log under the same {@code Herald} prefix as every other line
+     * Herald writes, without this class having to know about Bukkit.
+     *
+     * @param webhookUrl   the configured {@code discord.webhook-url}
+     * @param joinMessages the configured {@code discord.join-messages}, or {@code null} for the defaults
+     * @param logger       the logger transient trouble is reported through
+     */
+    public DiscordNotifier(String webhookUrl, List<String> joinMessages, Logger logger) {
+        this(webhookUrl, joinMessages, new Random(), logger);
+    }
+
     DiscordNotifier(String webhookUrl, List<String> joinMessages, Random random) {
+        this(webhookUrl, joinMessages, random, Logger.getLogger(DiscordNotifier.class.getName()));
+    }
+
+    DiscordNotifier(String webhookUrl, List<String> joinMessages, Random random, Logger logger) {
         this.webhookUrl = webhookUrl;
         this.joinMessages = (joinMessages != null && !joinMessages.isEmpty())
                 ? Collections.unmodifiableList(new ArrayList<>(joinMessages))
                 : DEFAULT_JOIN_MESSAGES;
         this.random = random;
+        // Defaulted here rather than trusted, because the only code path that reads it
+        // is the rate-limited one, so a null would surface as a failure to survive the
+        // very condition the retry exists for.
+        this.logger = logger != null ? logger : Logger.getLogger(DiscordNotifier.class.getName());
     }
 
     /**
@@ -252,7 +296,14 @@ public class DiscordNotifier implements Notifier {
     }
 
     /**
-     * Send a message to Discord via webhook
+     * Send a message to Discord via webhook.
+     * A rate-limited send is waited out and retried once, because a rate limit
+     * is the one failure Herald reports that the operator cannot fix and that
+     * clears on its own: several players joining within the same couple of
+     * seconds is ordinary operation, and the response states exactly how long
+     * to wait. Every other failure, and a second rate limit, is reported as it
+     * happens.
+     *
      * @param content The message content to send
      * @throws IOException if there's an error sending the message
      */
@@ -260,35 +311,185 @@ public class DiscordNotifier implements Notifier {
         if (webhookUrl == null || webhookUrl.isEmpty()) {
             throw new IllegalArgumentException("Discord webhook URL is not configured");
         }
-        
+
         URL url = URI.create(webhookUrl).toURL();
+
+        // Create JSON payload with the message content
+        String jsonPayload = String.format("{\"content\": \"%s\"}", escapeJson(content));
+
+        try {
+            sendOnce(url, jsonPayload);
+        } catch (RateLimitedException rateLimited) {
+            retryAfterRateLimit(url, jsonPayload, rateLimited);
+        }
+    }
+
+    /**
+     * Wait out a rate limit and send the message one more time.
+     * A wait longer than {@link #MAX_RETRY_AFTER_MILLIS} is refused rather than
+     * shortened, because sending again before Discord is ready would only earn
+     * a second rate limit.
+     *
+     * @param url          the parsed webhook URL
+     * @param jsonPayload  the request body that was rate limited
+     * @param rateLimited  the rate-limited response that prompted the retry
+     * @throws IOException if the wait was too long to be worth taking, was interrupted,
+     *                     or the retry itself failed
+     */
+    private void retryAfterRateLimit(URL url, String jsonPayload, RateLimitedException rateLimited)
+            throws IOException {
+        long waitMillis = rateLimited.getRetryAfterMillis();
+        if (waitMillis > MAX_RETRY_AFTER_MILLIS) {
+            throw new IOException(rateLimited.getMessage() + "; the wait of " + waitMillis
+                    + "ms it asked for is longer than the " + MAX_RETRY_AFTER_MILLIS
+                    + "ms Herald waits at most, so the message was not retried", rateLimited);
+        }
+
+        logger.warning("Discord rate-limited a join notification; retrying in " + waitMillis
+                + "ms. This clears on its own and needs no action.");
+        try {
+            Thread.sleep(waitMillis);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException("Interrupted while waiting to retry a rate-limited Discord webhook message", e);
+        }
+
+        try {
+            sendOnce(url, jsonPayload);
+        } catch (RateLimitedException rateLimitedAgain) {
+            throw new IOException(rateLimitedAgain.getMessage()
+                    + "; the message had already been retried once after being rate-limited, "
+                    + "so it was not retried again", rateLimitedAgain);
+        }
+    }
+
+    /**
+     * Send one webhook request, with no retry of its own.
+     *
+     * @param url         the parsed webhook URL
+     * @param jsonPayload the request body to send
+     * @throws RateLimitedException if Discord answered with {@link #RATE_LIMITED_STATUS}
+     * @throws IOException          if the request failed for any other reason
+     */
+    private void sendOnce(URL url, String jsonPayload) throws IOException {
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
         connection.setRequestMethod("POST");
         connection.setRequestProperty("Content-Type", "application/json");
         connection.setConnectTimeout(5000);  // 5 seconds connect timeout
         connection.setReadTimeout(10000);    // 10 seconds read timeout
         connection.setDoOutput(true);
-        
-        // Create JSON payload with the message content
-        String jsonPayload = String.format("{\"content\": \"%s\"}", escapeJson(content));
-        
+
         try {
             try (OutputStream os = connection.getOutputStream()) {
                 byte[] input = jsonPayload.getBytes(StandardCharsets.UTF_8);
                 os.write(input, 0, input.length);
             }
-            
+
             int responseCode = connection.getResponseCode();
-            if (responseCode < 200 || responseCode >= 300) {
-                String errorBody = readErrorBody(connection);
-                throw new IOException("Discord webhook returned error code: " + responseCode
-                        + (errorBody.isEmpty() ? "" : " (" + errorBody + ")"));
+            if (responseCode >= 200 && responseCode < 300) {
+                return;
             }
+
+            String errorBody = readErrorBody(connection);
+            String failure = "Discord webhook returned error code: " + responseCode
+                    + (errorBody.isEmpty() ? "" : " (" + errorBody + ")");
+            if (responseCode == RATE_LIMITED_STATUS) {
+                throw new RateLimitedException(failure,
+                        retryAfterMillis(connection.getHeaderField("Retry-After"), errorBody));
+            }
+            throw new IOException(failure);
         } finally {
             connection.disconnect();
         }
     }
-    
+
+    /**
+     * Work out how long a rate-limited response asks Herald to wait.
+     * Discord states the delay twice, as a {@code Retry-After} header and as a
+     * {@code retry_after} field in the JSON body, both counted in seconds; the
+     * header is preferred and the body is read only when the header is absent
+     * or unusable. A response stating neither is waited out for
+     * {@link #DEFAULT_RETRY_AFTER_MILLIS}, which is short enough to be worth
+     * taking on the chance the limit has already cleared.
+     *
+     * @param retryAfterHeader the {@code Retry-After} header, or {@code null} when absent
+     * @param responseBody     the response body, which may hold a {@code retry_after} field
+     * @return how long to wait before retrying, in milliseconds
+     */
+    static long retryAfterMillis(String retryAfterHeader, String responseBody) {
+        long fromHeader = parseSecondsAsMillis(retryAfterHeader);
+        if (fromHeader >= 0) {
+            return fromHeader;
+        }
+        long fromBody = parseSecondsAsMillis(retryAfterField(responseBody));
+        if (fromBody >= 0) {
+            return fromBody;
+        }
+        return DEFAULT_RETRY_AFTER_MILLIS;
+    }
+
+    /**
+     * @param responseBody the response body of a rate-limited request, which may be empty
+     * @return the value of its {@code retry_after} field, or {@code null} when it holds none
+     */
+    private static String retryAfterField(String responseBody) {
+        if (responseBody == null || responseBody.isEmpty()) {
+            return null;
+        }
+        Matcher matcher = RETRY_AFTER_FIELD.matcher(responseBody);
+        return matcher.find() ? matcher.group(1) : null;
+    }
+
+    /**
+     * Read a delay stated in seconds, rounding up so that a sub-millisecond
+     * delay still waits rather than retrying immediately.
+     * {@code Retry-After} may legally be an HTTP date rather than a count of
+     * seconds; Discord does not send one, and such a value is reported as
+     * unusable here so the caller falls back rather than guessing.
+     *
+     * @param seconds the delay as stated, or {@code null} when it was not stated
+     * @return the delay in milliseconds, or {@code -1} when it is absent or unusable
+     */
+    private static long parseSecondsAsMillis(String seconds) {
+        if (seconds == null || seconds.trim().isEmpty()) {
+            return -1;
+        }
+        double parsed;
+        try {
+            parsed = Double.parseDouble(seconds.trim());
+        } catch (NumberFormatException e) {
+            return -1;
+        }
+        if (Double.isNaN(parsed) || parsed < 0) {
+            return -1;
+        }
+        return (long) Math.ceil(parsed * 1000.0);
+    }
+
+    /**
+     * Raised when Discord answers a webhook request with {@link #RATE_LIMITED_STATUS}.
+     * This is an {@link IOException} like every other webhook failure, so that a
+     * rate limit reaching a caller past the one retry reads the same way in the
+     * log as the failures around it.
+     */
+    private static final class RateLimitedException extends IOException {
+
+        private static final long serialVersionUID = 1L;
+
+        private final long retryAfterMillis;
+
+        RateLimitedException(String message, long retryAfterMillis) {
+            super(message);
+            this.retryAfterMillis = retryAfterMillis;
+        }
+
+        /** @return how long the response asked Herald to wait, in milliseconds */
+        long getRetryAfterMillis() {
+            return retryAfterMillis;
+        }
+    }
+
+
     /**
      * Read the error response body of a failed webhook call so the reason for the
      * failure (invalid token, unknown webhook, rate limit) survives into the log.

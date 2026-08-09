@@ -11,9 +11,16 @@ import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.CsvSource;
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.logging.Handler;
+import java.util.logging.Level;
+import java.util.logging.LogRecord;
+import java.util.logging.Logger;
 
 import com.sun.net.httpserver.HttpServer;
 
@@ -1363,6 +1370,290 @@ class DiscordNotifierTest {
             DiscordNotifier notifier = new DiscordNotifier(url, null);
 
             assertDoesNotThrow(() -> notifier.sendMessage("hello"));
+        }
+    }
+
+    @Nested
+    @DisplayName("Rate Limit Tests")
+    class RateLimitTests {
+
+        /** The body Discord answers a rate-limited webhook request with. */
+        private static final String RATE_LIMIT_BODY =
+                "{\"message\": \"You are being rate limited.\", \"retry_after\": %s, \"global\": false}";
+
+        /** One scripted answer from the stub webhook. */
+        private record StubResponse(int status, String retryAfterHeader, String body) {
+
+            static StubResponse rateLimited(String retryAfterHeader, String body) {
+                return new StubResponse(DiscordNotifier.RATE_LIMITED_STATUS, retryAfterHeader, body);
+            }
+
+            static StubResponse accepted() {
+                return new StubResponse(204, null, "");
+            }
+        }
+
+        private HttpServer server;
+        private final List<String> requestBodies = Collections.synchronizedList(new ArrayList<>());
+        private final List<LogRecord> logRecords = Collections.synchronizedList(new ArrayList<>());
+        private Logger logger;
+
+        /**
+         * Give each test a logger of its own, so that the warning a retry writes
+         * can be read back without any of it reaching the console.
+         */
+        @BeforeEach
+        void createCapturingLogger() {
+            logger = Logger.getLogger("HeraldRateLimitTest-" + UUID.randomUUID());
+            logger.setUseParentHandlers(false);
+            logger.addHandler(new Handler() {
+                @Override
+                public void publish(LogRecord record) {
+                    logRecords.add(record);
+                }
+
+                @Override
+                public void flush() {
+                }
+
+                @Override
+                public void close() {
+                }
+            });
+        }
+
+        /**
+         * Start a local webhook that answers each request with the next scripted
+         * response, repeating the last one once the script runs out.
+         *
+         * @param responses the answers to give, in order
+         * @return the URL of the stub webhook endpoint
+         */
+        private String startStubWebhook(StubResponse... responses) throws IOException {
+            AtomicInteger answered = new AtomicInteger();
+            server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+            server.createContext("/webhook", exchange -> {
+                requestBodies.add(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+                StubResponse response = responses[Math.min(answered.getAndIncrement(), responses.length - 1)];
+                if (response.retryAfterHeader() != null) {
+                    exchange.getResponseHeaders().set("Retry-After", response.retryAfterHeader());
+                }
+                byte[] body = response.body().getBytes(StandardCharsets.UTF_8);
+                exchange.sendResponseHeaders(response.status(), body.length == 0 ? -1 : body.length);
+                if (body.length > 0) {
+                    try (OutputStream os = exchange.getResponseBody()) {
+                        os.write(body);
+                    }
+                }
+                exchange.close();
+            });
+            server.start();
+            return "http://127.0.0.1:" + server.getAddress().getPort() + "/webhook";
+        }
+
+        @AfterEach
+        void stopStubWebhook() {
+            if (server != null) {
+                server.stop(0);
+            }
+        }
+
+        /**
+         * @return the warnings written while the test ran
+         */
+        private List<String> warnings() {
+            return logRecords.stream()
+                    .filter(record -> record.getLevel() == Level.WARNING)
+                    .map(LogRecord::getMessage)
+                    .toList();
+        }
+
+        @Test
+        @DisplayName("A rate-limited message should be retried once and delivered")
+        void testRateLimitedMessageIsRetriedAndDelivered() throws IOException {
+            String url = startStubWebhook(
+                    StubResponse.rateLimited("0.05", String.format(RATE_LIMIT_BODY, "0.05")),
+                    StubResponse.accepted());
+            DiscordNotifier notifier = new DiscordNotifier(url, null, logger);
+
+            assertDoesNotThrow(() -> notifier.sendMessage("hello"));
+
+            assertEquals(2, requestBodies.size(), "The message should have been sent twice");
+            assertEquals(requestBodies.get(0), requestBodies.get(1),
+                    "The retry should carry the same message as the attempt it repeats");
+        }
+
+        @Test
+        @DisplayName("A retry should be reported as a warning naming the wait it takes")
+        void testRetryIsReportedAsAWarning() throws IOException {
+            String url = startStubWebhook(
+                    StubResponse.rateLimited("0.05", String.format(RATE_LIMIT_BODY, "0.05")),
+                    StubResponse.accepted());
+            DiscordNotifier notifier = new DiscordNotifier(url, null, logger);
+
+            notifier.sendMessage("hello");
+
+            assertEquals(1, warnings().size(), "One warning should be written: " + warnings());
+            assertTrue(warnings().get(0).contains("rate-limited"),
+                    "The warning should say what happened: " + warnings().get(0));
+            assertTrue(warnings().get(0).contains("50ms"),
+                    "The warning should say how long the retry waits: " + warnings().get(0));
+        }
+
+        @Test
+        @DisplayName("A second rate limit should fail rather than be retried again")
+        void testSecondRateLimitFails() throws IOException {
+            String url = startStubWebhook(
+                    StubResponse.rateLimited("0.05", String.format(RATE_LIMIT_BODY, "0.05")));
+            DiscordNotifier notifier = new DiscordNotifier(url, null, logger);
+
+            IOException exception = assertThrows(IOException.class, () -> notifier.sendMessage("hello"));
+
+            assertEquals(2, requestBodies.size(), "The message should have been sent exactly twice");
+            assertTrue(exception.getMessage().contains(String.valueOf(DiscordNotifier.RATE_LIMITED_STATUS)),
+                    "The failure should name the status: " + exception.getMessage());
+            assertTrue(exception.getMessage().contains("not retried again"),
+                    "The failure should say the retry was already spent: " + exception.getMessage());
+        }
+
+        @Test
+        @DisplayName("A wait longer than the cap should fail without being taken")
+        void testWaitBeyondTheCapIsNotTaken() throws IOException {
+            String longWaitSeconds = String.valueOf(DiscordNotifier.MAX_RETRY_AFTER_MILLIS / 1000 + 60);
+            String url = startStubWebhook(
+                    StubResponse.rateLimited(longWaitSeconds, String.format(RATE_LIMIT_BODY, longWaitSeconds)),
+                    StubResponse.accepted());
+            DiscordNotifier notifier = new DiscordNotifier(url, null, logger);
+
+            long startedAt = System.nanoTime();
+            IOException exception = assertThrows(IOException.class, () -> notifier.sendMessage("hello"));
+            long elapsedMillis = (System.nanoTime() - startedAt) / 1_000_000;
+
+            assertEquals(1, requestBodies.size(), "The message should not have been sent a second time");
+            assertTrue(elapsedMillis < DiscordNotifier.MAX_RETRY_AFTER_MILLIS,
+                    "The wait should have been refused rather than taken: " + elapsedMillis + "ms");
+            assertTrue(exception.getMessage().contains(String.valueOf(DiscordNotifier.MAX_RETRY_AFTER_MILLIS)),
+                    "The failure should name the cap: " + exception.getMessage());
+            assertTrue(warnings().isEmpty(), "No retry was made, so none should be reported: " + warnings());
+        }
+
+        @Test
+        @DisplayName("A rate limit stating no delay at all should still be retried")
+        void testRateLimitWithoutAnyStatedDelayIsRetried() throws IOException {
+            String url = startStubWebhook(
+                    StubResponse.rateLimited(null, ""),
+                    StubResponse.accepted());
+            DiscordNotifier notifier = new DiscordNotifier(url, null, logger);
+
+            long startedAt = System.nanoTime();
+            assertDoesNotThrow(() -> notifier.sendMessage("hello"));
+            long elapsedMillis = (System.nanoTime() - startedAt) / 1_000_000;
+
+            assertEquals(2, requestBodies.size(), "The message should have been sent twice");
+            assertTrue(elapsedMillis >= DiscordNotifier.DEFAULT_RETRY_AFTER_MILLIS - 50,
+                    "The default wait should have been taken: " + elapsedMillis + "ms");
+        }
+
+        @Test
+        @DisplayName("A rate limit stating its delay only in the body should be retried after that delay")
+        void testRateLimitDelayIsReadFromTheBody() throws IOException {
+            String url = startStubWebhook(
+                    StubResponse.rateLimited(null, String.format(RATE_LIMIT_BODY, "0.05")),
+                    StubResponse.accepted());
+            DiscordNotifier notifier = new DiscordNotifier(url, null, logger);
+
+            assertDoesNotThrow(() -> notifier.sendMessage("hello"));
+
+            assertEquals(2, requestBodies.size(), "The message should have been sent twice");
+            // Read from the warning rather than from the clock: what is under test is which
+            // delay was believed, not how long two loopback round trips happened to take.
+            assertEquals(1, warnings().size(), "One warning should be written: " + warnings());
+            assertTrue(warnings().get(0).contains("50ms"),
+                    "The body should have been believed over the default: " + warnings().get(0));
+        }
+
+        @Test
+        @DisplayName("A retry should survive a notifier built without a logger")
+        void testRetryWithoutALogger() throws IOException {
+            String url = startStubWebhook(
+                    StubResponse.rateLimited("0.05", String.format(RATE_LIMIT_BODY, "0.05")),
+                    StubResponse.accepted());
+            DiscordNotifier notifier = new DiscordNotifier(url, null, (Logger) null);
+
+            assertDoesNotThrow(() -> notifier.sendMessage("hello"));
+
+            assertEquals(2, requestBodies.size(), "The message should still have been retried and delivered");
+        }
+
+        @Test
+        @DisplayName("A failure that is not a rate limit should not be retried")
+        void testOtherFailuresAreNotRetried() throws IOException {
+            String url = startStubWebhook(new StubResponse(401, null,
+                    "{\"message\": \"Invalid Webhook Token\", \"code\": 50027}"));
+            DiscordNotifier notifier = new DiscordNotifier(url, null, logger);
+
+            IOException exception = assertThrows(IOException.class, () -> notifier.sendMessage("hello"));
+
+            assertEquals(1, requestBodies.size(), "A misconfiguration should be reported, not retried");
+            assertTrue(exception.getMessage().contains("Invalid Webhook Token"),
+                    "The failure should still carry the error body: " + exception.getMessage());
+            assertTrue(warnings().isEmpty(), "No retry was made, so none should be reported: " + warnings());
+        }
+    }
+
+    @Nested
+    @DisplayName("Retry-After Parsing Tests")
+    class RetryAfterParsingTests {
+
+        @Test
+        @DisplayName("A whole number of seconds should be read from the header")
+        void testWholeSecondsHeader() {
+            assertEquals(2000L, DiscordNotifier.retryAfterMillis("2", ""));
+        }
+
+        @Test
+        @DisplayName("A fractional number of seconds should be rounded up to the next millisecond")
+        void testFractionalSecondsAreRoundedUp() {
+            assertEquals(529L, DiscordNotifier.retryAfterMillis("0.529", ""));
+            assertEquals(1L, DiscordNotifier.retryAfterMillis("0.0001", ""));
+        }
+
+        @Test
+        @DisplayName("The header should be preferred over the body")
+        void testHeaderIsPreferredOverBody() {
+            assertEquals(2000L, DiscordNotifier.retryAfterMillis("2",
+                    "{\"message\": \"You are being rate limited.\", \"retry_after\": 5.0}"));
+        }
+
+        @ParameterizedTest
+        @NullAndEmptySource
+        @ValueSource(strings = {"   ", "Wed, 21 Oct 2026 07:28:00 GMT", "soon", "-1", "1,5"})
+        @DisplayName("An absent or unusable header should fall through to the body")
+        void testUnusableHeaderFallsThroughToTheBody(String header) {
+            assertEquals(5000L, DiscordNotifier.retryAfterMillis(header,
+                    "{\"message\": \"You are being rate limited.\", \"retry_after\": 5.0, \"global\": false}"));
+        }
+
+        @ParameterizedTest
+        @NullAndEmptySource
+        @ValueSource(strings = {"{}", "{\"message\": \"You are being rate limited.\"}", "not json at all"})
+        @DisplayName("A response stating no usable delay at all should fall back to the default")
+        void testNoUsableDelayFallsBackToTheDefault(String body) {
+            assertEquals(DiscordNotifier.DEFAULT_RETRY_AFTER_MILLIS,
+                    DiscordNotifier.retryAfterMillis(null, body));
+        }
+
+        @Test
+        @DisplayName("A delay stated as zero should be honoured rather than treated as absent")
+        void testZeroDelayIsHonoured() {
+            assertEquals(0L, DiscordNotifier.retryAfterMillis("0", ""));
+        }
+
+        @Test
+        @DisplayName("A pathological delay should be reported as-is, for the caller to refuse")
+        void testPathologicalDelayIsReportedAsIs() {
+            assertTrue(DiscordNotifier.retryAfterMillis("86400", "") > DiscordNotifier.MAX_RETRY_AFTER_MILLIS,
+                    "A day-long delay should be left for the caller to reject");
         }
     }
 }

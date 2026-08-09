@@ -89,6 +89,10 @@ Herald reports what it loaded in the server log at startup:
 
 If a notification fails to send later, Herald logs the failure with the reason and names the channel it was sent through (`Discord` or `email`) — for Discord, the reason includes the error message the webhook returned.
 
+One Discord failure is reported as a warning rather than an error, because it clears on its own:
+
+- `Discord rate-limited a join notification; retrying in ...` — Discord asked Herald to slow down, which happens when several players join within the same couple of seconds. Herald waits for as long as Discord asked and sends the message again, so nothing is lost and no action is needed. If the retry is rate-limited too, or Discord asks for a wait longer than ten seconds, that is reported as a failure instead and the message is not sent.
+
 ## Permissions
 
 Herald does not register any custom permission nodes. All functionality is controlled through the configuration file and applies server-wide.
