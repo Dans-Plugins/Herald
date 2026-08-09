@@ -47,7 +47,7 @@ public final class Herald extends JavaPlugin implements Listener {
         if (discordEnabled) {
             List<String> discordProblems = DiscordNotifier.validateConfiguration(discordWebhookUrl, discordJoinMessages, serverName);
             if (discordProblems.isEmpty()) {
-                notifiers.add(new DiscordNotifier(discordWebhookUrl, discordJoinMessages));
+                notifiers.add(new DiscordNotifier(discordWebhookUrl, discordJoinMessages, getLogger()));
                 getLogger().info("Discord notifications enabled");
             } else {
                 getLogger().warning("Discord notifications are enabled in config, but the configuration is incomplete: "

@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [Unreleased]
+
+### Changed
+
+- A Discord webhook message that is rate-limited (HTTP 429) is now waited out and sent again once, instead of being discarded and reported as a failure. The wait is taken from the `Retry-After` header, falling back to the `retry_after` field of the response body and then to one second, and is capped at ten seconds so that one pathological value cannot park the sending task; a wait longer than the cap, or a second rate limit, is reported as a failure the way it was before. The retry itself is reported as a warning naming how long it waits, rather than as the `SEVERE` line a transient, self-correcting condition used to produce.
+
 ## [2.0.0-SNAPSHOT-8-8-2026] – 2026-08-08
 
 ### Changed
