@@ -17,6 +17,23 @@ public class EmailNotifier implements Notifier {
     /** Body used when {@code email.body} is absent or empty. */
     static final String DEFAULT_BODY = "{player} has joined {server} at {time}";
 
+    /**
+     * Milliseconds allowed for the connection to the SMTP server to be established.
+     * Jakarta Mail waits forever when this is left unset, which would park the
+     * sending task on a host that never answers.
+     */
+    static final int CONNECT_TIMEOUT_MILLIS = 10000;
+
+    /**
+     * Milliseconds allowed for the SMTP server to answer a command. Longer than the
+     * connect timeout because a relay that has accepted the message is entitled to
+     * take its time scanning or queueing it before acknowledging.
+     */
+    static final int READ_TIMEOUT_MILLIS = 30000;
+
+    /** Milliseconds allowed for a write to the SMTP server to complete. */
+    static final int WRITE_TIMEOUT_MILLIS = 30000;
+
     private final String smtpServer;
     private final int smtpPort;
     private final String smtpUsername;
@@ -114,6 +131,26 @@ public class EmailNotifier implements Notifier {
     }
 
     /**
+     * Describe the cost of sending SMTP credentials over an unencrypted connection.
+     * Reported as a warning rather than as a problem from
+     * {@link #validateConfiguration(List, String, int, String)} because the
+     * combination is deliberate on a relay with no STARTTLS support, and email is
+     * still delivered; what it is not is private.
+     *
+     * @param smtpUsername the configured {@code smtp.username}
+     * @param useTLS       the configured {@code smtp.use-tls}
+     * @return the warning to log, or {@code null} when no credentials are exposed
+     */
+    public static String describeCredentialExposure(String smtpUsername, boolean useTLS) {
+        if (useTLS || smtpUsername == null || smtpUsername.isEmpty()) {
+            return null;
+        }
+        return "'smtp.username' is set but 'smtp.use-tls' is false, so the SMTP username and password "
+                + "are sent over an unencrypted connection, along with every notification. "
+                + "Set 'smtp.use-tls' to true unless the server genuinely has no STARTTLS support.";
+    }
+
+    /**
      * Describe why an address cannot be used, using the same parser that
      * {@link #sendNotification(String, String)} relies on at send time.
      * {@code validate()} is called as well as the constructor because the
@@ -178,6 +215,45 @@ public class EmailNotifier implements Notifier {
     }
 
     /**
+     * @return whether the configured {@code smtp.username} calls for authentication
+     */
+    private boolean usesAuthentication() {
+        return smtpUsername != null && !smtpUsername.isEmpty();
+    }
+
+    /**
+     * Assemble the properties the SMTP session is built from.
+     * Package-private so that the settings can be asserted without a mail server
+     * being involved, in the way {@link DiscordNotifier} exposes its own send-time
+     * decisions for direct testing.
+     *
+     * <p>STARTTLS is requested as {@code required} as well as {@code enable}, because
+     * {@code enable} on its own is advisory: Jakarta Mail falls back to an unencrypted
+     * connection against a server that does not advertise STARTTLS, which would leave
+     * {@code smtp.use-tls: true} sitting in the config file while nothing is encrypted.
+     * A server with no STARTTLS support therefore fails the send and is reported,
+     * rather than being talked to in the clear.
+     *
+     * @return the SMTP properties for this notifier's configuration
+     */
+    Properties buildSessionProperties() {
+        Properties props = new Properties();
+        props.put("mail.smtp.host", smtpServer);
+        props.put("mail.smtp.port", String.valueOf(smtpPort));
+        props.put("mail.smtp.auth", usesAuthentication() ? "true" : "false");
+        props.put("mail.smtp.connectiontimeout", String.valueOf(CONNECT_TIMEOUT_MILLIS));
+        props.put("mail.smtp.timeout", String.valueOf(READ_TIMEOUT_MILLIS));
+        props.put("mail.smtp.writetimeout", String.valueOf(WRITE_TIMEOUT_MILLIS));
+
+        if (useTLS) {
+            props.put("mail.smtp.starttls.enable", "true");
+            props.put("mail.smtp.starttls.required", "true");
+        }
+
+        return props;
+    }
+
+    /**
      * Send an email notification with the given subject and body.
      *
      * @param subject The email subject line
@@ -198,16 +274,9 @@ public class EmailNotifier implements Notifier {
             throw new IllegalStateException("Email sender address not configured");
         }
 
-        boolean useAuth = smtpUsername != null && !smtpUsername.isEmpty();
+        boolean useAuth = usesAuthentication();
 
-        Properties props = new Properties();
-        props.put("mail.smtp.host", smtpServer);
-        props.put("mail.smtp.port", String.valueOf(smtpPort));
-        props.put("mail.smtp.auth", useAuth ? "true" : "false");
-
-        if (useTLS) {
-            props.put("mail.smtp.starttls.enable", "true");
-        }
+        Properties props = buildSessionProperties();
 
         Session session;
         if (useAuth) {

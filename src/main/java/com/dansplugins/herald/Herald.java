@@ -80,6 +80,14 @@ public final class Herald extends JavaPlugin implements Listener {
                 notifiers.add(new EmailNotifier(smtpServer, smtpPort, smtpUsername, smtpPassword, emailSender, useTLS,
                         emailRecipients, emailSubject, emailBody));
                 getLogger().info("Email notifications enabled");
+
+                // Warned rather than refused: the combination still delivers mail, and an
+                // operator who turned TLS off for a relay that cannot do STARTTLS should
+                // learn from the log what it costs them.
+                String credentialExposure = EmailNotifier.describeCredentialExposure(smtpUsername, useTLS);
+                if (credentialExposure != null) {
+                    getLogger().warning(credentialExposure);
+                }
             } else if (emailPartiallyConfigured) {
                 getLogger().warning("Email configuration is incomplete: " + String.join("; ", emailProblems)
                         + ". Email notifications will be skipped.");
