@@ -1,5 +1,8 @@
 package com.dansplugins.herald;
 
+import jakarta.mail.MessagingException;
+import jakarta.mail.Session;
+import jakarta.mail.Transport;
 import jakarta.mail.internet.AddressException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -9,10 +12,13 @@ import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.net.InetAddress;
+import java.net.ServerSocket;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Properties;
 
 /**
  * Unit tests for EmailNotifier class
@@ -525,6 +531,150 @@ class EmailNotifierTest {
                     "Email defaults must not contain Discord markdown");
             assertFalse(EmailNotifier.DEFAULT_BODY.contains("**"),
                     "Email defaults must not contain Discord markdown");
+        }
+    }
+
+    @Nested
+    @DisplayName("SMTP Session Property Tests")
+    class SessionPropertyTests {
+
+        /** A notifier whose SMTP settings are the ones under test; the rest are incidental. */
+        private EmailNotifier notifier(String smtpUsername, boolean useTLS) {
+            return new EmailNotifier("smtp.example.com", 587, smtpUsername, "pass",
+                    "sender@example.com", useTLS, Arrays.asList("recipient@example.com"));
+        }
+
+        @Test
+        @DisplayName("Session properties should carry the configured host and port")
+        void testHostAndPort() {
+            Properties props = notifier(null, true).buildSessionProperties();
+
+            assertEquals("smtp.example.com", props.getProperty("mail.smtp.host"));
+            assertEquals("587", props.getProperty("mail.smtp.port"));
+        }
+
+        @Test
+        @DisplayName("Authentication should be requested only when a username is configured")
+        void testAuthFollowsUsername() {
+            assertEquals("true", notifier("user", true).buildSessionProperties().getProperty("mail.smtp.auth"));
+            assertEquals("false", notifier(null, true).buildSessionProperties().getProperty("mail.smtp.auth"));
+            assertEquals("false", notifier("", true).buildSessionProperties().getProperty("mail.smtp.auth"));
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"user", ""})
+        @DisplayName("Connect, read and write timeouts should be set on both the authenticated and unauthenticated paths")
+        void testTimeoutsAreAlwaysSet(String smtpUsername) {
+            Properties props = notifier(smtpUsername, true).buildSessionProperties();
+
+            assertEquals(String.valueOf(EmailNotifier.CONNECT_TIMEOUT_MILLIS),
+                    props.getProperty("mail.smtp.connectiontimeout"));
+            assertEquals(String.valueOf(EmailNotifier.READ_TIMEOUT_MILLIS),
+                    props.getProperty("mail.smtp.timeout"));
+            assertEquals(String.valueOf(EmailNotifier.WRITE_TIMEOUT_MILLIS),
+                    props.getProperty("mail.smtp.writetimeout"));
+        }
+
+        @Test
+        @DisplayName("Timeouts should be set whether or not TLS is in use")
+        void testTimeoutsSetWithoutTls() {
+            Properties props = notifier("user", false).buildSessionProperties();
+
+            assertNotNull(props.getProperty("mail.smtp.connectiontimeout"));
+            assertNotNull(props.getProperty("mail.smtp.timeout"));
+            assertNotNull(props.getProperty("mail.smtp.writetimeout"));
+        }
+
+        @Test
+        @DisplayName("Every timeout should be a positive number of milliseconds")
+        void testTimeoutsAreBounded() {
+            assertTrue(EmailNotifier.CONNECT_TIMEOUT_MILLIS > 0, "Connect timeout must be bounded");
+            assertTrue(EmailNotifier.READ_TIMEOUT_MILLIS > 0, "Read timeout must be bounded");
+            assertTrue(EmailNotifier.WRITE_TIMEOUT_MILLIS > 0, "Write timeout must be bounded");
+        }
+
+        @Test
+        @DisplayName("smtp.use-tls should require STARTTLS, not merely offer to use it")
+        void testStarttlsIsRequired() {
+            Properties props = notifier("user", true).buildSessionProperties();
+
+            assertEquals("true", props.getProperty("mail.smtp.starttls.enable"));
+            assertEquals("true", props.getProperty("mail.smtp.starttls.required"),
+                    "starttls.enable alone falls back to an unencrypted connection");
+        }
+
+        @Test
+        @DisplayName("Disabling TLS should leave both STARTTLS properties unset")
+        void testStarttlsAbsentWhenTlsDisabled() {
+            Properties props = notifier("user", false).buildSessionProperties();
+
+            assertNull(props.getProperty("mail.smtp.starttls.enable"));
+            assertNull(props.getProperty("mail.smtp.starttls.required"));
+        }
+
+        @Test
+        @DisplayName("A server that accepts a connection and never answers should time out rather than hang")
+        void testUnresponsiveServerTimesOut() throws Exception {
+            // Backlog of 1 with no accept() call: the handshake completes, so the client
+            // connects and then waits on a greeting that never arrives.
+            try (ServerSocket stub = new ServerSocket(0, 1, InetAddress.getLoopbackAddress())) {
+                EmailNotifier notifier = new EmailNotifier(
+                        stub.getInetAddress().getHostAddress(), stub.getLocalPort(), null, null,
+                        "sender@example.com", false, Arrays.asList("recipient@example.com"));
+
+                // The shipped read timeout is deliberately generous, so it is shortened here;
+                // what this asserts is that the property name is one Jakarta Mail honours.
+                Properties props = notifier.buildSessionProperties();
+                props.put("mail.smtp.timeout", "500");
+                props.put("mail.smtp.connectiontimeout", "500");
+
+                Transport transport = Session.getInstance(props).getTransport("smtp");
+                long startedAt = System.nanoTime();
+                assertThrows(MessagingException.class, transport::connect,
+                        "An unresponsive server should fail the connection, not wait forever");
+                long elapsedMillis = (System.nanoTime() - startedAt) / 1_000_000;
+
+                assertTrue(elapsedMillis < 10000,
+                        "The timeout should have fired promptly, but the attempt took " + elapsedMillis + "ms");
+            }
+        }
+    }
+
+    @Nested
+    @DisplayName("Credential Exposure Tests")
+    class CredentialExposureTests {
+
+        @Test
+        @DisplayName("Credentials sent without TLS should be reported")
+        void testWarnsWhenCredentialsSentInTheClear() {
+            String warning = EmailNotifier.describeCredentialExposure("user@example.com", false);
+
+            assertNotNull(warning, "Sending a username without TLS should be reported");
+            assertTrue(warning.contains("smtp.username"), "Warning should name the key at fault: " + warning);
+            assertTrue(warning.contains("smtp.use-tls"), "Warning should name the key that fixes it: " + warning);
+        }
+
+        @Test
+        @DisplayName("Credentials sent with TLS should not be reported")
+        void testSilentWhenTlsIsOn() {
+            assertNull(EmailNotifier.describeCredentialExposure("user@example.com", true));
+        }
+
+        @ParameterizedTest
+        @NullAndEmptySource
+        @DisplayName("An unauthenticated session should not be reported, with or without TLS")
+        void testSilentWhenNoCredentials(String smtpUsername) {
+            assertNull(EmailNotifier.describeCredentialExposure(smtpUsername, false));
+            assertNull(EmailNotifier.describeCredentialExposure(smtpUsername, true));
+        }
+
+        @Test
+        @DisplayName("The warning should not quote the password")
+        void testWarningKeepsThePasswordOutOfTheLog() {
+            String warning = EmailNotifier.describeCredentialExposure("user@example.com", false);
+
+            assertFalse(warning.contains("user@example.com"),
+                    "The warning names the key, not the credential itself: " + warning);
         }
     }
 
