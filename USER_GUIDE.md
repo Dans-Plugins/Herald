@@ -94,7 +94,8 @@ If a notification fails to send later, Herald logs the failure with the reason a
 Two email failures are worth recognising by sight:
 
 - A failure mentioning STARTTLS means `smtp.use-tls` is `true` but the server did not offer STARTTLS. Either point `smtp.server` and `smtp.port` at a port that does — usually `587` — or, if the server truly cannot, set `smtp.use-tls` to `false` and accept that the connection is then unencrypted.
-- A failure mentioning a read or connect timeout means the SMTP server accepted the connection, or the address resolved, but nothing answered in time. Herald gives up rather than waiting indefinitely, so a mail server that has stopped responding is reported instead of silently holding every join.
+- A failure mentioning a connect timeout means no connection to `smtp.server` on `smtp.port` could be established within ten seconds — usually a wrong host or port, or a firewall dropping the packets.
+- A failure mentioning a read timeout means the connection was established but the server stopped answering, and Herald gave up after thirty seconds rather than waiting indefinitely. Either way the failure is reported, instead of the notification silently holding a task for every join.
 
 One Discord failure is reported as a warning rather than an error, because it clears on its own:
 

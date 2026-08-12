@@ -154,7 +154,7 @@ smtp:
 This is binding rather than best-effort: when it is `true`, a server that does not offer STARTTLS fails the send and the failure is logged, instead of the connection quietly falling back to plain text. Set it to `false` only for a server that genuinely has no STARTTLS support, and be aware of what that means — with `smtp.username` filled in, the SMTP username and password travel over that unencrypted connection along with every notification. Herald warns at startup when those two settings are combined:
 
 ```
-'smtp.username' is set but 'smtp.use-tls' is false, so the SMTP username and password are sent over an unencrypted connection, along with every notification.
+'smtp.username' is set but 'smtp.use-tls' is false, so the SMTP username and password are sent over an unencrypted connection, along with every notification. Set 'smtp.use-tls' to true unless the server genuinely has no STARTTLS support.
 ```
 
 **Example:**

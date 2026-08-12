@@ -669,8 +669,8 @@ class EmailNotifierTest {
         }
 
         @Test
-        @DisplayName("The warning should not quote the password")
-        void testWarningKeepsThePasswordOutOfTheLog() {
+        @DisplayName("The warning should not quote the username it is about")
+        void testWarningKeepsTheCredentialOutOfTheLog() {
             String warning = EmailNotifier.describeCredentialExposure("user@example.com", false);
 
             assertFalse(warning.contains("user@example.com"),
