@@ -181,7 +181,7 @@ smtp:
 The two encryption keys are alternatives rather than layers: `smtp.use-tls` starts a plain connection and upgrades it with STARTTLS, while `smtp.implicit-tls` completes the TLS handshake first and sends every command inside it. Setting both to `true` is a configuration error, and Herald reports it at startup and skips email notifications rather than silently picking one:
 
 ```
-'smtp.use-tls' and 'smtp.implicit-tls' are both true, but they are alternatives: 'smtp.use-tls' upgrades a plain connection with STARTTLS, usually on port 587, while 'smtp.implicit-tls' negotiates TLS before the first command, usually on port 465. Set exactly one of them to true.
+'smtp.use-tls' and 'smtp.implicit-tls' are both true, but they are alternatives: 'smtp.use-tls' upgrades a plain connection with STARTTLS, usually on port 587, while 'smtp.implicit-tls' negotiates TLS before the first command, usually on port 465. Set exactly one of them to true. Email notifications will be skipped.
 ```
 
 Leaving both `false` sends everything, credentials included, in plain text; see `smtp.use-tls` for what that costs.
