@@ -86,7 +86,9 @@ public final class Herald extends JavaPlugin implements Listener {
 
             if (tlsModeConflict != null) {
                 getLogger().warning(tlsModeConflict + " Email notifications will be skipped.");
-            } else if (emailProblems.isEmpty()) {
+            }
+
+            if (tlsModeConflict == null && emailProblems.isEmpty()) {
                 notifiers.add(new EmailNotifier(smtpServer, smtpPort, smtpUsername, smtpPassword, emailSender, useTLS,
                         implicitTLS, emailRecipients, emailSubject, emailBody));
                 getLogger().info("Email notifications enabled");
@@ -106,7 +108,10 @@ public final class Herald extends JavaPlugin implements Listener {
                 if (portMismatch != null) {
                     getLogger().warning(portMismatch);
                 }
-            } else if (emailPartiallyConfigured) {
+            } else if (emailPartiallyConfigured && !emailProblems.isEmpty()) {
+                // Logged even when a mode conflict was reported above, so that a config file
+                // with both problems names both at once instead of surfacing the second one
+                // on the restart after the first is fixed.
                 getLogger().warning("Email configuration is incomplete: " + String.join("; ", emailProblems)
                         + ". Email notifications will be skipped.");
             }
