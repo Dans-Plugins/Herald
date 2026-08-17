@@ -68,6 +68,9 @@ public final class Herald extends JavaPlugin implements Listener {
             String smtpPassword = getConfig().getString("smtp.password");
             String emailSender = getConfig().getString("email.sender");
             boolean useTLS = getConfig().getBoolean("smtp.use-tls", true);
+            // Defaults to false so that a config.yml written before the key existed keeps
+            // using STARTTLS on the submission port it was set up against.
+            boolean implicitTLS = getConfig().getBoolean("smtp.implicit-tls", false);
             String emailSubject = getConfig().getString("email.subject");
             String emailBody = getConfig().getString("email.body");
 
@@ -76,19 +79,39 @@ public final class Herald extends JavaPlugin implements Listener {
                     || (smtpServer != null && !smtpServer.isEmpty())
                     || (emailSender != null && !emailSender.isEmpty());
 
-            if (emailProblems.isEmpty()) {
+            // Reported outside the partial-configuration check because the two encryption
+            // keys can only conflict after a deliberate edit, so the conflict is worth
+            // naming even on a config that has nothing else filled in yet.
+            String tlsModeConflict = EmailNotifier.describeTlsModeConflict(useTLS, implicitTLS);
+
+            if (tlsModeConflict != null) {
+                getLogger().warning(tlsModeConflict + " Email notifications will be skipped.");
+            }
+
+            if (tlsModeConflict == null && emailProblems.isEmpty()) {
                 notifiers.add(new EmailNotifier(smtpServer, smtpPort, smtpUsername, smtpPassword, emailSender, useTLS,
-                        emailRecipients, emailSubject, emailBody));
+                        implicitTLS, emailRecipients, emailSubject, emailBody));
                 getLogger().info("Email notifications enabled");
 
                 // Warned rather than refused: the combination still delivers mail, and an
                 // operator who turned TLS off for a relay that cannot do STARTTLS should
                 // learn from the log what it costs them.
-                String credentialExposure = EmailNotifier.describeCredentialExposure(smtpUsername, useTLS);
+                String credentialExposure = EmailNotifier.describeCredentialExposure(smtpUsername, useTLS, implicitTLS);
                 if (credentialExposure != null) {
                     getLogger().warning(credentialExposure);
                 }
-            } else if (emailPartiallyConfigured) {
+
+                // Also a warning rather than a refusal: the conventional ports are the
+                // common case, not the rule, and a relay is free to offer either mode
+                // anywhere.
+                String portMismatch = EmailNotifier.describePortTlsMismatch(smtpPort, implicitTLS);
+                if (portMismatch != null) {
+                    getLogger().warning(portMismatch);
+                }
+            } else if (emailPartiallyConfigured && !emailProblems.isEmpty()) {
+                // Logged even when a mode conflict was reported above, so that a config file
+                // with both problems names both at once instead of surfacing the second one
+                // on the restart after the first is fixed.
                 getLogger().warning("Email configuration is incomplete: " + String.join("; ", emailProblems)
                         + ". Email notifications will be skipped.");
             }

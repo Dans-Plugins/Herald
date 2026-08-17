@@ -32,12 +32,15 @@ email-recipients: []
 # SMTP server settings used to deliver the emails above
 smtp:
   server: ""           # Your SMTP server address
-  port: 587            # 587 for TLS, 25 for plain
+  port: 587            # 587 for STARTTLS, 465 for implicit TLS, 25 for plain
   username: ""         # Leave empty for no authentication
   password: ""         # Leave empty for no authentication
   use-tls: true        # Set to true if using port 587. STARTTLS is then required, not merely
                        # attempted: a server that cannot do it fails the send rather than
                        # falling back to an unencrypted connection.
+  implicit-tls: false  # Set to true, with use-tls false, for a server that expects TLS before
+                       # the first command - SMTPS, usually port 465. The two are alternatives:
+                       # setting both to true is reported at startup and skips email.
 
 email:
   enabled: true        # Set to false to disable email notifications, keeping the settings above and below
