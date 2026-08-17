@@ -110,7 +110,15 @@ smtp:
 
 **Type:** integer
 **Default:** `587`
-**Description:** The port of your SMTP server. Use `587` for TLS (STARTTLS) or `25` for plain SMTP. Must be between `1` and `65535`; if it is set to a value outside that range, Herald logs a warning at startup and skips email notifications.
+**Description:** The port of your SMTP server. Use `587` for STARTTLS with `smtp.use-tls`, `465` for implicit TLS with `smtp.implicit-tls`, or `25` for plain SMTP with both of those set to `false`. Must be between `1` and `65535`; if it is set to a value outside that range, Herald logs a warning at startup and skips email notifications.
+
+The port and the encryption mode have to agree, because a server on `465` negotiates TLS before the first command while one on `587` expects a plain connection that STARTTLS then upgrades. Herald warns at startup when the two conventional ports are paired with the wrong mode, rather than leaving a protocol error to be read off the first player join:
+
+```
+'smtp.port' is 465, which conventionally expects implicit TLS, but 'smtp.implicit-tls' is false. Servers on that port negotiate TLS before the first command, so the send is likely to fail. Set 'smtp.implicit-tls' to true and 'smtp.use-tls' to false, or use port 587 with 'smtp.use-tls'.
+```
+
+This is a warning and not a refusal, since a relay is free to offer either mode on any port; email notifications still load.
 
 **Example:**
 
@@ -149,12 +157,12 @@ smtp:
 
 **Type:** boolean
 **Default:** `true`
-**Description:** Whether STARTTLS is required when connecting to the SMTP server. Set to `true` when using port `587`.
+**Description:** Whether STARTTLS is required when connecting to the SMTP server. Set to `true` when using port `587`. For a server that expects TLS from the first byte, on port `465`, use `smtp.implicit-tls` instead.
 
-This is binding rather than best-effort: when it is `true`, a server that does not offer STARTTLS fails the send and the failure is logged, instead of the connection quietly falling back to plain text. Set it to `false` only for a server that genuinely has no STARTTLS support, and be aware of what that means — with `smtp.username` filled in, the SMTP username and password travel over that unencrypted connection along with every notification. Herald warns at startup when those two settings are combined:
+This is binding rather than best-effort: when it is `true`, a server that does not offer STARTTLS fails the send and the failure is logged, instead of the connection quietly falling back to plain text. Set it to `false` only for a server that genuinely has no STARTTLS support, and be aware of what that means — with `smtp.username` filled in, the SMTP username and password travel over that unencrypted connection along with every notification. Herald warns at startup when credentials are configured with neither encryption mode turned on:
 
 ```
-'smtp.username' is set but 'smtp.use-tls' is false, so the SMTP username and password are sent over an unencrypted connection, along with every notification. Set 'smtp.use-tls' to true unless the server genuinely has no STARTTLS support.
+'smtp.username' is set but neither 'smtp.use-tls' nor 'smtp.implicit-tls' is true, so the SMTP username and password are sent over an unencrypted connection, along with every notification. Set 'smtp.use-tls' to true, or 'smtp.implicit-tls' to true on a port that expects SMTPS, unless the server genuinely has no encryption support.
 ```
 
 **Example:**
@@ -162,6 +170,29 @@ This is binding rather than best-effort: when it is `true`, a server that does n
 ```yaml
 smtp:
   use-tls: true
+```
+
+## smtp.implicit-tls
+
+**Type:** boolean
+**Default:** `false`
+**Description:** Whether the connection to the SMTP server is encrypted before the first SMTP command, which is what servers on port `465` — SMTPS — expect. Set this to `true` and `smtp.use-tls` to `false` for such a server; several hosted mail providers publish `465` as their primary submission port.
+
+The two encryption keys are alternatives rather than layers: `smtp.use-tls` starts a plain connection and upgrades it with STARTTLS, while `smtp.implicit-tls` completes the TLS handshake first and sends every command inside it. Setting both to `true` is a configuration error, and Herald reports it at startup and skips email notifications rather than silently picking one:
+
+```
+'smtp.use-tls' and 'smtp.implicit-tls' are both true, but they are alternatives: 'smtp.use-tls' upgrades a plain connection with STARTTLS, usually on port 587, while 'smtp.implicit-tls' negotiates TLS before the first command, usually on port 465. Set exactly one of them to true.
+```
+
+Leaving both `false` sends everything, credentials included, in plain text; see `smtp.use-tls` for what that costs.
+
+**Example:**
+
+```yaml
+smtp:
+  port: 465
+  use-tls: false
+  implicit-tls: true
 ```
 
 ## email.enabled

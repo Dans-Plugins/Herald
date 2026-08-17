@@ -74,12 +74,12 @@ class EmailNotifierTest {
         }
 
         @Test
-        @DisplayName("Should accept port 465 (SMTPS)")
+        @DisplayName("Should carry port 465 through to the session properties")
         void testSmtpsPort() {
             List<String> recipients = Arrays.asList("user@example.com");
             EmailNotifier notifier = new EmailNotifier(
                     "smtp.example.com", 465, "user", "password", "sender@example.com", false, recipients);
-            assertNotNull(notifier);
+            assertEquals("465", notifier.buildSessionProperties().getProperty("mail.smtp.port"));
         }
 
         @Test
@@ -612,6 +612,53 @@ class EmailNotifierTest {
             assertNull(props.getProperty("mail.smtp.starttls.required"));
         }
 
+        /** A notifier configured the way {@code smtp.implicit-tls: true} configures one. */
+        private EmailNotifier implicitTlsNotifier(boolean useTLS) {
+            return new EmailNotifier("smtp.example.com", EmailNotifier.IMPLICIT_TLS_PORT, "user", "pass",
+                    "sender@example.com", useTLS, true, Arrays.asList("recipient@example.com"), null, null);
+        }
+
+        @Test
+        @DisplayName("smtp.implicit-tls should enable SSL on the connection itself")
+        void testImplicitTlsEnablesSsl() {
+            Properties props = implicitTlsNotifier(false).buildSessionProperties();
+
+            assertEquals("true", props.getProperty("mail.smtp.ssl.enable"),
+                    "Port 465 expects the handshake before the first command");
+            assertEquals(String.valueOf(EmailNotifier.IMPLICIT_TLS_PORT), props.getProperty("mail.smtp.port"));
+        }
+
+        @Test
+        @DisplayName("Implicit TLS should not also request STARTTLS")
+        void testImplicitTlsExcludesStarttls() {
+            Properties props = implicitTlsNotifier(true).buildSessionProperties();
+
+            assertNull(props.getProperty("mail.smtp.starttls.enable"),
+                    "STARTTLS and implicit TLS are alternatives, not layers");
+            assertNull(props.getProperty("mail.smtp.starttls.required"));
+        }
+
+        @Test
+        @DisplayName("Leaving implicit TLS off should leave the SSL property unset")
+        void testSslAbsentWithoutImplicitTls() {
+            assertNull(notifier("user", true).buildSessionProperties().getProperty("mail.smtp.ssl.enable"));
+            assertNull(notifier("user", false).buildSessionProperties().getProperty("mail.smtp.ssl.enable"));
+        }
+
+        @Test
+        @DisplayName("Timeouts and authentication should be set on the implicit TLS path too")
+        void testImplicitTlsKeepsTimeoutsAndAuth() {
+            Properties props = implicitTlsNotifier(false).buildSessionProperties();
+
+            assertEquals("true", props.getProperty("mail.smtp.auth"));
+            assertEquals(String.valueOf(EmailNotifier.CONNECT_TIMEOUT_MILLIS),
+                    props.getProperty("mail.smtp.connectiontimeout"));
+            assertEquals(String.valueOf(EmailNotifier.READ_TIMEOUT_MILLIS),
+                    props.getProperty("mail.smtp.timeout"));
+            assertEquals(String.valueOf(EmailNotifier.WRITE_TIMEOUT_MILLIS),
+                    props.getProperty("mail.smtp.writetimeout"));
+        }
+
         @Test
         @DisplayName("A server that accepts a connection and never answers should time out rather than hang")
         void testUnresponsiveServerTimesOut() throws Exception {
@@ -641,13 +688,71 @@ class EmailNotifierTest {
     }
 
     @Nested
+    @DisplayName("TLS Mode Tests")
+    class TlsModeTests {
+
+        @Test
+        @DisplayName("Requesting both encryption modes should be reported as a conflict")
+        void testBothModesConflict() {
+            String problem = EmailNotifier.describeTlsModeConflict(true, true);
+
+            assertNotNull(problem, "STARTTLS and implicit TLS cannot both be used on one connection");
+            assertTrue(problem.contains("smtp.use-tls"), "Problem should name both keys: " + problem);
+            assertTrue(problem.contains("smtp.implicit-tls"), "Problem should name both keys: " + problem);
+        }
+
+        @Test
+        @DisplayName("Requesting one encryption mode, or neither, should not be reported")
+        void testSingleModeIsAccepted() {
+            assertNull(EmailNotifier.describeTlsModeConflict(true, false));
+            assertNull(EmailNotifier.describeTlsModeConflict(false, true));
+            assertNull(EmailNotifier.describeTlsModeConflict(false, false));
+        }
+
+        @Test
+        @DisplayName("Port 465 without implicit TLS should be reported as a likely misconfiguration")
+        void testSmtpsPortWithoutImplicitTls() {
+            String warning = EmailNotifier.describePortTlsMismatch(EmailNotifier.IMPLICIT_TLS_PORT, false);
+
+            assertNotNull(warning, "Port 465 speaks TLS from the first byte");
+            assertTrue(warning.contains("smtp.implicit-tls"),
+                    "Warning should name the key that fixes it: " + warning);
+        }
+
+        @Test
+        @DisplayName("Implicit TLS on the STARTTLS submission port should be reported")
+        void testImplicitTlsOnSubmissionPort() {
+            String warning = EmailNotifier.describePortTlsMismatch(EmailNotifier.STARTTLS_PORT, true);
+
+            assertNotNull(warning, "Port 587 expects a plain connection upgraded with STARTTLS");
+            assertTrue(warning.contains(String.valueOf(EmailNotifier.IMPLICIT_TLS_PORT)),
+                    "Warning should name the port implicit TLS belongs on: " + warning);
+        }
+
+        @Test
+        @DisplayName("A port and mode that agree should not be reported")
+        void testMatchingPortAndModeAreSilent() {
+            assertNull(EmailNotifier.describePortTlsMismatch(EmailNotifier.IMPLICIT_TLS_PORT, true));
+            assertNull(EmailNotifier.describePortTlsMismatch(EmailNotifier.STARTTLS_PORT, false));
+        }
+
+        @Test
+        @DisplayName("An unconventional port should not be judged in either mode")
+        void testUnconventionalPortIsSilent() {
+            assertNull(EmailNotifier.describePortTlsMismatch(2525, true));
+            assertNull(EmailNotifier.describePortTlsMismatch(2525, false));
+            assertNull(EmailNotifier.describePortTlsMismatch(25, false));
+        }
+    }
+
+    @Nested
     @DisplayName("Credential Exposure Tests")
     class CredentialExposureTests {
 
         @Test
         @DisplayName("Credentials sent without TLS should be reported")
         void testWarnsWhenCredentialsSentInTheClear() {
-            String warning = EmailNotifier.describeCredentialExposure("user@example.com", false);
+            String warning = EmailNotifier.describeCredentialExposure("user@example.com", false, false);
 
             assertNotNull(warning, "Sending a username without TLS should be reported");
             assertTrue(warning.contains("smtp.username"), "Warning should name the key at fault: " + warning);
@@ -657,21 +762,37 @@ class EmailNotifierTest {
         @Test
         @DisplayName("Credentials sent with TLS should not be reported")
         void testSilentWhenTlsIsOn() {
-            assertNull(EmailNotifier.describeCredentialExposure("user@example.com", true));
+            assertNull(EmailNotifier.describeCredentialExposure("user@example.com", true, false));
+        }
+
+        @Test
+        @DisplayName("Credentials sent over implicit TLS should not be reported")
+        void testSilentWhenImplicitTlsIsOn() {
+            assertNull(EmailNotifier.describeCredentialExposure("user@example.com", false, true),
+                    "Implicit TLS encrypts the credentials as surely as STARTTLS does");
+        }
+
+        @Test
+        @DisplayName("The warning should name implicit TLS as an alternative fix")
+        void testWarningNamesImplicitTls() {
+            String warning = EmailNotifier.describeCredentialExposure("user@example.com", false, false);
+
+            assertTrue(warning.contains("smtp.implicit-tls"),
+                    "Warning should name both keys that encrypt the connection: " + warning);
         }
 
         @ParameterizedTest
         @NullAndEmptySource
         @DisplayName("An unauthenticated session should not be reported, with or without TLS")
         void testSilentWhenNoCredentials(String smtpUsername) {
-            assertNull(EmailNotifier.describeCredentialExposure(smtpUsername, false));
-            assertNull(EmailNotifier.describeCredentialExposure(smtpUsername, true));
+            assertNull(EmailNotifier.describeCredentialExposure(smtpUsername, false, false));
+            assertNull(EmailNotifier.describeCredentialExposure(smtpUsername, true, false));
         }
 
         @Test
         @DisplayName("The warning should not quote the username it is about")
         void testWarningKeepsTheCredentialOutOfTheLog() {
-            String warning = EmailNotifier.describeCredentialExposure("user@example.com", false);
+            String warning = EmailNotifier.describeCredentialExposure("user@example.com", false, false);
 
             assertFalse(warning.contains("user@example.com"),
                     "The warning names the key, not the credential itself: " + warning);

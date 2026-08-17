@@ -34,12 +34,22 @@ public class EmailNotifier implements Notifier {
     /** Milliseconds allowed for a write to the SMTP server to complete. */
     static final int WRITE_TIMEOUT_MILLIS = 30000;
 
+    /**
+     * The port implicit TLS is conventionally offered on.
+     * Named here because both the port warning and its documentation refer to it.
+     */
+    static final int IMPLICIT_TLS_PORT = 465;
+
+    /** The submission port STARTTLS is conventionally offered on. */
+    static final int STARTTLS_PORT = 587;
+
     private final String smtpServer;
     private final int smtpPort;
     private final String smtpUsername;
     private final String smtpPassword;
     private final String emailSender;
     private final boolean useTLS;
+    private final boolean implicitTLS;
     private final List<String> recipients;
     private final String subjectTemplate;
     private final String bodyTemplate;
@@ -67,12 +77,32 @@ public class EmailNotifier implements Notifier {
     public EmailNotifier(String smtpServer, int smtpPort, String smtpUsername,
                          String smtpPassword, String emailSender, boolean useTLS,
                          List<String> recipients, String subjectTemplate, String bodyTemplate) {
+        this(smtpServer, smtpPort, smtpUsername, smtpPassword, emailSender, useTLS, false,
+                recipients, subjectTemplate, bodyTemplate);
+    }
+
+    /**
+     * Create a notifier that connects over implicit TLS when asked to.
+     * Implicit TLS — SMTPS, conventionally port 465 — completes a TLS handshake
+     * before the first SMTP command, where STARTTLS upgrades a connection that
+     * started in plain text. The two are alternatives rather than layers, so
+     * {@code useTLS} and {@code implicitTLS} are mutually exclusive; Herald refuses
+     * the combination at startup via
+     * {@link #describeTlsModeConflict(boolean, boolean)} rather than picking one.
+     *
+     * @param useTLS      the configured {@code smtp.use-tls}, requesting STARTTLS
+     * @param implicitTLS the configured {@code smtp.implicit-tls}, requesting SMTPS
+     */
+    public EmailNotifier(String smtpServer, int smtpPort, String smtpUsername,
+                         String smtpPassword, String emailSender, boolean useTLS, boolean implicitTLS,
+                         List<String> recipients, String subjectTemplate, String bodyTemplate) {
         this.smtpServer = smtpServer;
         this.smtpPort = smtpPort;
         this.smtpUsername = smtpUsername;
         this.smtpPassword = smtpPassword;
         this.emailSender = emailSender;
         this.useTLS = useTLS;
+        this.implicitTLS = implicitTLS;
         this.recipients = recipients != null ? new ArrayList<>(recipients) : new ArrayList<>();
         this.subjectTemplate = templateOrDefault(subjectTemplate, DEFAULT_SUBJECT);
         this.bodyTemplate = templateOrDefault(bodyTemplate, DEFAULT_BODY);
@@ -139,15 +169,66 @@ public class EmailNotifier implements Notifier {
      *
      * @param smtpUsername the configured {@code smtp.username}
      * @param useTLS       the configured {@code smtp.use-tls}
+     * @param implicitTLS  the configured {@code smtp.implicit-tls}
      * @return the warning to log, or {@code null} when no credentials are exposed
      */
-    public static String describeCredentialExposure(String smtpUsername, boolean useTLS) {
-        if (useTLS || smtpUsername == null || smtpUsername.isEmpty()) {
+    public static String describeCredentialExposure(String smtpUsername, boolean useTLS, boolean implicitTLS) {
+        if (useTLS || implicitTLS || smtpUsername == null || smtpUsername.isEmpty()) {
             return null;
         }
-        return "'smtp.username' is set but 'smtp.use-tls' is false, so the SMTP username and password "
-                + "are sent over an unencrypted connection, along with every notification. "
-                + "Set 'smtp.use-tls' to true unless the server genuinely has no STARTTLS support.";
+        return "'smtp.username' is set but neither 'smtp.use-tls' nor 'smtp.implicit-tls' is true, so the "
+                + "SMTP username and password are sent over an unencrypted connection, along with every "
+                + "notification. Set 'smtp.use-tls' to true, or 'smtp.implicit-tls' to true on a port that "
+                + "expects SMTPS, unless the server genuinely has no encryption support.";
+    }
+
+    /**
+     * Describe the conflict between the two encryption modes.
+     * STARTTLS upgrades a connection that began in plain text and implicit TLS
+     * completes a handshake before the first command, so a session can be built for
+     * one or the other but not both. Reported as a problem rather than resolved by
+     * precedence, since either resolution would leave a key in the config file
+     * describing something the plugin is not doing.
+     *
+     * @param useTLS      the configured {@code smtp.use-tls}
+     * @param implicitTLS the configured {@code smtp.implicit-tls}
+     * @return the problem to report, or {@code null} when at most one mode is requested
+     */
+    public static String describeTlsModeConflict(boolean useTLS, boolean implicitTLS) {
+        if (!(useTLS && implicitTLS)) {
+            return null;
+        }
+        return "'smtp.use-tls' and 'smtp.implicit-tls' are both true, but they are alternatives: "
+                + "'smtp.use-tls' upgrades a plain connection with STARTTLS, usually on port "
+                + STARTTLS_PORT + ", while 'smtp.implicit-tls' negotiates TLS before the first command, "
+                + "usually on port " + IMPLICIT_TLS_PORT + ". Set exactly one of them to true.";
+    }
+
+    /**
+     * Describe an encryption mode that does not match the port it is pointed at.
+     * Only the two conventional ports are judged, because a relay is free to offer
+     * either mode anywhere; what these two catch is the configuration that fails on
+     * the first player join with a protocol error rather than a legible one — a port
+     * that expects a handshake being sent {@code EHLO} in the clear, or the reverse.
+     *
+     * @param smtpPort    the configured {@code smtp.port}
+     * @param implicitTLS the configured {@code smtp.implicit-tls}
+     * @return the warning to log, or {@code null} when the port and mode agree
+     */
+    public static String describePortTlsMismatch(int smtpPort, boolean implicitTLS) {
+        if (smtpPort == IMPLICIT_TLS_PORT && !implicitTLS) {
+            return "'smtp.port' is " + IMPLICIT_TLS_PORT + ", which conventionally expects implicit TLS, "
+                    + "but 'smtp.implicit-tls' is false. Servers on that port negotiate TLS before the first "
+                    + "command, so the send is likely to fail. Set 'smtp.implicit-tls' to true and "
+                    + "'smtp.use-tls' to false, or use port " + STARTTLS_PORT + " with 'smtp.use-tls'.";
+        }
+        if (smtpPort == STARTTLS_PORT && implicitTLS) {
+            return "'smtp.implicit-tls' is true but 'smtp.port' is " + STARTTLS_PORT + ", which "
+                    + "conventionally expects a plain connection upgraded with STARTTLS, so the handshake is "
+                    + "likely to fail. Use port " + IMPLICIT_TLS_PORT + " for implicit TLS, or set "
+                    + "'smtp.use-tls' to true and 'smtp.implicit-tls' to false.";
+        }
+        return null;
     }
 
     /**
@@ -234,6 +315,11 @@ public class EmailNotifier implements Notifier {
      * A server with no STARTTLS support therefore fails the send and is reported,
      * rather than being talked to in the clear.
      *
+     * <p>Implicit TLS is set instead of, never alongside, the STARTTLS pair: the two
+     * describe different points in the conversation for the handshake to happen, and a
+     * session cannot do both. Herald refuses the combination at startup, so the
+     * precedence below only decides what a caller that built the notifier directly gets.
+     *
      * @return the SMTP properties for this notifier's configuration
      */
     Properties buildSessionProperties() {
@@ -245,7 +331,9 @@ public class EmailNotifier implements Notifier {
         props.put("mail.smtp.timeout", String.valueOf(READ_TIMEOUT_MILLIS));
         props.put("mail.smtp.writetimeout", String.valueOf(WRITE_TIMEOUT_MILLIS));
 
-        if (useTLS) {
+        if (implicitTLS) {
+            props.put("mail.smtp.ssl.enable", "true");
+        } else if (useTLS) {
             props.put("mail.smtp.starttls.enable", "true");
             props.put("mail.smtp.starttls.required", "true");
         }
