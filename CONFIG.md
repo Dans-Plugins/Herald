@@ -165,6 +165,8 @@ This is binding rather than best-effort: when it is `true`, a server that does n
 'smtp.username' is set but neither 'smtp.use-tls' nor 'smtp.implicit-tls' is true, so the SMTP username and password are sent over an unencrypted connection, along with every notification. Set 'smtp.use-tls' to true, or 'smtp.implicit-tls' to true on a port that expects SMTPS, unless the server genuinely has no encryption support.
 ```
 
+What this key covers is that the connection is encrypted, not who is on the other end of it; that is `smtp.verify-server-identity`, which is on by default and applies here.
+
 **Example:**
 
 ```yaml
@@ -186,6 +188,8 @@ The two encryption keys are alternatives rather than layers: `smtp.use-tls` star
 
 Leaving both `false` sends everything, credentials included, in plain text; see `smtp.use-tls` for what that costs.
 
+Like `smtp.use-tls`, this key governs only whether the connection is encrypted. Whether the certificate on the other end belongs to `smtp.server` is `smtp.verify-server-identity`, which is on by default and applies to this mode identically.
+
 **Example:**
 
 ```yaml
@@ -193,6 +197,29 @@ smtp:
   port: 465
   use-tls: false
   implicit-tls: true
+```
+
+## smtp.verify-server-identity
+
+**Type:** boolean
+**Default:** `true`
+**Description:** Whether the certificate the SMTP server presents is checked against the address configured in `smtp.server`. This is a separate question from encryption, and neither `smtp.use-tls` nor `smtp.implicit-tls` answers it: those two establish that the connection is private, while this one establishes that it is private with the host that was asked for rather than with whoever answered. It applies to both encryption modes equally, and has no effect when neither is turned on, since there is then no certificate to check.
+
+Herald sets this explicitly in both directions rather than leaving it to the mail library. The pinned `com.sun.mail:jakarta.mail:2.0.1` does not verify the identity unless it is asked to, and later versions of the library default the other way, so leaving it unset would make the behaviour a property of the version that happens to be on the classpath.
+
+Setting it to `false` is a deliberate choice for a relay whose certificate cannot name the address it is reached at — one dialled by IP address, or one presenting a certificate issued for a different hostname. Herald warns at startup when it is turned off while an encryption mode is in use, rather than refusing to load, since mail is still delivered over an encrypted connection:
+
+```
+'smtp.verify-server-identity' is false, so the certificate the SMTP server presents is not checked against 'smtp.server'. The connection is still encrypted, but it is no longer established that it is encrypted with the host that was asked for. Set 'smtp.verify-server-identity' back to true unless the server is reached by an address the certificate cannot name.
+```
+
+Because the default is `true`, an installation that was sending mail to such a relay before this key existed will begin to fail on the first player join after upgrading, with a certificate error in the log. Setting this key to `false` restores the previous behaviour; pointing `smtp.server` at the hostname the certificate actually names is the better fix where it is available.
+
+**Example:**
+
+```yaml
+smtp:
+  verify-server-identity: true
 ```
 
 ## email.enabled
