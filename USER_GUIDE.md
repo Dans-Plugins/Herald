@@ -50,7 +50,8 @@ discord:
 4. Leave `email.enabled` set to `true`.
 5. Leave `smtp.use-tls` set to `true` unless your server has no STARTTLS support. It is required rather than attempted, so a server that cannot do STARTTLS reports a failure instead of sending in the clear.
 6. If your provider publishes port `465` instead, set `smtp.port` to `465`, `smtp.implicit-tls` to `true` and `smtp.use-tls` to `false`. That port encrypts the connection before the first command rather than upgrading it partway through, so exactly one of the two keys applies to any given server.
-7. Restart the server.
+7. Leave `smtp.verify-server-identity` set to `true`, so that whichever encryption mode you chose also confirms the certificate belongs to the host in `smtp.server`. Turn it off only for a relay dialled by IP address, or one presenting a certificate for a different name.
+8. Restart the server.
 
 ### Turning a Notification Channel Off
 
@@ -91,6 +92,7 @@ Herald reports what it loaded in the server log at startup:
 - `'smtp.username' is set but neither 'smtp.use-tls' nor 'smtp.implicit-tls' is true, ...` — email is configured and will be sent, but the SMTP credentials and every notification travel unencrypted. Turning on whichever encryption mode the server offers clears it.
 - `'smtp.use-tls' and 'smtp.implicit-tls' are both true, ...` — the two encryption modes are alternatives, so email notifications are skipped until exactly one of them is set to `true`.
 - `'smtp.port' is 465, which conventionally expects implicit TLS, ...` — or the reverse, implicit TLS on port `587`. Email notifications still load, because a relay may offer either mode on any port, but a send that fails with a protocol error after this warning is explained by it.
+- `'smtp.verify-server-identity' is false, ...` — email is configured and will be sent over an encrypted connection, but the certificate presented is no longer checked against `smtp.server`. Setting the key back to `true` clears it.
 
 If a notification fails to send later, Herald logs the failure with the reason and names the channel it was sent through (`Discord` or `email`) — for Discord, the reason includes the error message the webhook returned.
 
@@ -98,6 +100,7 @@ Some email failures are worth recognising by sight:
 
 - A failure mentioning STARTTLS means `smtp.use-tls` is `true` but the server did not offer STARTTLS. Either point `smtp.server` and `smtp.port` at a port that does — usually `587` — or, if the server truly cannot, set `smtp.use-tls` to `false` and accept that the connection is then unencrypted. On port `465` the answer is neither: that port wants `smtp.implicit-tls` instead.
 - A failure mentioning an unrecognised command, or a handshake or SSL error, usually means the encryption mode and the port disagree — implicit TLS on a STARTTLS port, or the reverse. Herald warns about the two conventional ports at startup, so the startup log names it as well.
+- A failure naming the certificate, or reporting that the hostname does not match, means `smtp.verify-server-identity` is `true` and the certificate the server presented was issued for some other name than the one in `smtp.server`. Point `smtp.server` at the name the certificate carries where you can; where you cannot — a relay reached by IP address, for instance — set `smtp.verify-server-identity` to `false` and accept that the encrypted connection no longer proves who answered it.
 - A failure mentioning a connect timeout means no connection to `smtp.server` on `smtp.port` could be established within ten seconds — usually a wrong host or port, or a firewall dropping the packets.
 - A failure mentioning a read timeout means the connection was established but the server stopped answering, and Herald gave up after thirty seconds rather than waiting indefinitely. Either way the failure is reported, instead of the notification silently holding a task for every join.
 

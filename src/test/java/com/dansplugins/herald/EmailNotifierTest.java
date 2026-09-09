@@ -645,6 +645,59 @@ class EmailNotifierTest {
             assertNull(notifier("user", false).buildSessionProperties().getProperty("mail.smtp.ssl.enable"));
         }
 
+        /** A notifier whose identity-verification setting is the one under test. */
+        private EmailNotifier identityNotifier(boolean useTLS, boolean implicitTLS, boolean verifyServerIdentity) {
+            return new EmailNotifier("smtp.example.com", 587, "user", "pass", "sender@example.com",
+                    useTLS, implicitTLS, verifyServerIdentity, Arrays.asList("recipient@example.com"), null, null);
+        }
+
+        @Test
+        @DisplayName("Server identity verification should be requested on the STARTTLS path")
+        void testIdentityVerifiedWithStarttls() {
+            Properties props = identityNotifier(true, false, true).buildSessionProperties();
+
+            assertEquals("true", props.getProperty("mail.smtp.ssl.checkserveridentity"),
+                    "jakarta.mail 2.0.1 leaves the certificate unchecked against the host unless asked");
+        }
+
+        @Test
+        @DisplayName("Server identity verification should be requested on the implicit TLS path")
+        void testIdentityVerifiedWithImplicitTls() {
+            Properties props = identityNotifier(false, true, true).buildSessionProperties();
+
+            assertEquals("true", props.getProperty("mail.smtp.ssl.checkserveridentity"),
+                    "Implicit TLS encrypts the connection but does not by itself check who answered");
+        }
+
+        @Test
+        @DisplayName("The constructors that predate the setting should verify the identity")
+        void testIdentityVerifiedByDefault() {
+            assertEquals("true", notifier("user", true).buildSessionProperties()
+                    .getProperty("mail.smtp.ssl.checkserveridentity"));
+            assertEquals("true", implicitTlsNotifier(false).buildSessionProperties()
+                    .getProperty("mail.smtp.ssl.checkserveridentity"));
+        }
+
+        @Test
+        @DisplayName("Turning verification off should be stated explicitly, not left to the library default")
+        void testIdentityOptOutIsExplicit() {
+            assertEquals("false", identityNotifier(true, false, false).buildSessionProperties()
+                    .getProperty("mail.smtp.ssl.checkserveridentity"),
+                    "A later jakarta.mail defaults this to true, so the opt-out has to be written down");
+            assertEquals("false", identityNotifier(false, true, false).buildSessionProperties()
+                    .getProperty("mail.smtp.ssl.checkserveridentity"));
+        }
+
+        @Test
+        @DisplayName("Without an encryption mode there should be no identity property to set")
+        void testIdentityAbsentWithoutEncryption() {
+            assertNull(identityNotifier(false, false, true).buildSessionProperties()
+                    .getProperty("mail.smtp.ssl.checkserveridentity"),
+                    "There is no certificate to check on a plain connection");
+            assertNull(identityNotifier(false, false, false).buildSessionProperties()
+                    .getProperty("mail.smtp.ssl.checkserveridentity"));
+        }
+
         @Test
         @DisplayName("Timeouts and authentication should be set on the implicit TLS path too")
         void testImplicitTlsKeepsTimeoutsAndAuth() {
@@ -742,6 +795,45 @@ class EmailNotifierTest {
             assertNull(EmailNotifier.describePortTlsMismatch(2525, true));
             assertNull(EmailNotifier.describePortTlsMismatch(2525, false));
             assertNull(EmailNotifier.describePortTlsMismatch(25, false));
+        }
+    }
+
+    @Nested
+    @DisplayName("Server Identity Verification Tests")
+    class ServerIdentityVerificationTests {
+
+        @Test
+        @DisplayName("Turning verification off under STARTTLS should be reported")
+        void testWarnsWhenVerificationOffWithStarttls() {
+            String warning = EmailNotifier.describeUnverifiedServerIdentity(false, true, false);
+
+            assertNotNull(warning, "An encrypted connection to an unverified host should be reported");
+            assertTrue(warning.contains("smtp.verify-server-identity"),
+                    "Warning should name the key at fault: " + warning);
+            assertTrue(warning.contains("smtp.server"),
+                    "Warning should name what the certificate is no longer checked against: " + warning);
+        }
+
+        @Test
+        @DisplayName("Turning verification off under implicit TLS should be reported")
+        void testWarnsWhenVerificationOffWithImplicitTls() {
+            assertNotNull(EmailNotifier.describeUnverifiedServerIdentity(false, false, true),
+                    "Implicit TLS is affected by the setting exactly as STARTTLS is");
+        }
+
+        @Test
+        @DisplayName("Leaving verification on should not be reported")
+        void testSilentWhenVerificationIsOn() {
+            assertNull(EmailNotifier.describeUnverifiedServerIdentity(true, true, false));
+            assertNull(EmailNotifier.describeUnverifiedServerIdentity(true, false, true));
+            assertNull(EmailNotifier.describeUnverifiedServerIdentity(true, false, false));
+        }
+
+        @Test
+        @DisplayName("An unencrypted connection should not be reported here")
+        void testSilentWithoutEncryption() {
+            assertNull(EmailNotifier.describeUnverifiedServerIdentity(false, false, false),
+                    "There is no certificate to check, and the credential warning names the larger problem");
         }
     }
 
