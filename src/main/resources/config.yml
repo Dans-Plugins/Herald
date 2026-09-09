@@ -41,6 +41,12 @@ smtp:
   implicit-tls: false  # Set to true, with use-tls false, for a server that expects TLS before
                        # the first command - SMTPS, usually port 465. The two are alternatives:
                        # setting both to true is reported at startup and skips email.
+  verify-server-identity: true
+                       # Whether the certificate the server presents is checked against the
+                       # address in 'server' above. Applies to both encryption modes and is
+                       # ignored when neither is on. Set to false only for a server whose
+                       # certificate cannot name the address it is reached at; the connection
+                       # stays encrypted, but with whoever answered.
 
 email:
   enabled: true        # Set to false to disable email notifications, keeping the settings above and below

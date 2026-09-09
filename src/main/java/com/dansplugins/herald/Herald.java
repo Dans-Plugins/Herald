@@ -71,6 +71,11 @@ public final class Herald extends JavaPlugin implements Listener {
             // Defaults to false so that a config.yml written before the key existed keeps
             // using STARTTLS on the submission port it was set up against.
             boolean implicitTLS = getConfig().getBoolean("smtp.implicit-tls", false);
+            // Defaults to true, unlike the two keys above, because it tightens rather than
+            // switches: a config.yml written before the key existed was already asking for
+            // an encrypted connection to a named host, and checking the certificate against
+            // that name is what it was asking for.
+            boolean verifyServerIdentity = getConfig().getBoolean("smtp.verify-server-identity", true);
             String emailSubject = getConfig().getString("email.subject");
             String emailBody = getConfig().getString("email.body");
 
@@ -90,7 +95,7 @@ public final class Herald extends JavaPlugin implements Listener {
 
             if (tlsModeConflict == null && emailProblems.isEmpty()) {
                 notifiers.add(new EmailNotifier(smtpServer, smtpPort, smtpUsername, smtpPassword, emailSender, useTLS,
-                        implicitTLS, emailRecipients, emailSubject, emailBody));
+                        implicitTLS, verifyServerIdentity, emailRecipients, emailSubject, emailBody));
                 getLogger().info("Email notifications enabled");
 
                 // Warned rather than refused: the combination still delivers mail, and an
@@ -107,6 +112,15 @@ public final class Herald extends JavaPlugin implements Listener {
                 String portMismatch = EmailNotifier.describePortTlsMismatch(smtpPort, implicitTLS);
                 if (portMismatch != null) {
                     getLogger().warning(portMismatch);
+                }
+
+                // Warned for the same reason as the two above: the opt-out exists for relays
+                // whose certificate cannot name the address they are reached at, so it is a
+                // choice to be recorded in the log rather than a configuration to refuse.
+                String unverifiedIdentity = EmailNotifier.describeUnverifiedServerIdentity(
+                        verifyServerIdentity, useTLS, implicitTLS);
+                if (unverifiedIdentity != null) {
+                    getLogger().warning(unverifiedIdentity);
                 }
             } else if (emailPartiallyConfigured && !emailProblems.isEmpty()) {
                 // Logged even when a mode conflict was reported above, so that a config file
