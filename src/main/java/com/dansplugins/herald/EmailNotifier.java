@@ -50,6 +50,7 @@ public class EmailNotifier implements Notifier {
     private final String emailSender;
     private final boolean useTLS;
     private final boolean implicitTLS;
+    private final boolean verifyServerIdentity;
     private final List<String> recipients;
     private final String subjectTemplate;
     private final String bodyTemplate;
@@ -96,6 +97,24 @@ public class EmailNotifier implements Notifier {
     public EmailNotifier(String smtpServer, int smtpPort, String smtpUsername,
                          String smtpPassword, String emailSender, boolean useTLS, boolean implicitTLS,
                          List<String> recipients, String subjectTemplate, String bodyTemplate) {
+        this(smtpServer, smtpPort, smtpUsername, smtpPassword, emailSender, useTLS, implicitTLS, true,
+                recipients, subjectTemplate, bodyTemplate);
+    }
+
+    /**
+     * Create a notifier that can be told not to verify the SMTP server's identity.
+     * Encryption establishes that the connection is private; verification establishes
+     * that it is private with the host named in {@code smtp.server} rather than with
+     * whoever answered. The two are separate, and the pinned mail library leaves the
+     * second one off unless it is asked for, so Herald asks for it rather than
+     * inheriting whatever the pinned version happens to default to.
+     *
+     * @param verifyServerIdentity the configured {@code smtp.verify-server-identity}
+     */
+    public EmailNotifier(String smtpServer, int smtpPort, String smtpUsername,
+                         String smtpPassword, String emailSender, boolean useTLS, boolean implicitTLS,
+                         boolean verifyServerIdentity, List<String> recipients,
+                         String subjectTemplate, String bodyTemplate) {
         this.smtpServer = smtpServer;
         this.smtpPort = smtpPort;
         this.smtpUsername = smtpUsername;
@@ -103,6 +122,7 @@ public class EmailNotifier implements Notifier {
         this.emailSender = emailSender;
         this.useTLS = useTLS;
         this.implicitTLS = implicitTLS;
+        this.verifyServerIdentity = verifyServerIdentity;
         this.recipients = recipients != null ? new ArrayList<>(recipients) : new ArrayList<>();
         this.subjectTemplate = templateOrDefault(subjectTemplate, DEFAULT_SUBJECT);
         this.bodyTemplate = templateOrDefault(bodyTemplate, DEFAULT_BODY);
@@ -202,6 +222,34 @@ public class EmailNotifier implements Notifier {
                 + "'smtp.use-tls' upgrades a plain connection with STARTTLS, usually on port "
                 + STARTTLS_PORT + ", while 'smtp.implicit-tls' negotiates TLS before the first command, "
                 + "usually on port " + IMPLICIT_TLS_PORT + ". Set exactly one of them to true.";
+    }
+
+    /**
+     * Describe what turning off server identity verification costs.
+     * Reported as a warning rather than as a problem from
+     * {@link #validateConfiguration(List, String, int, String)} because the
+     * combination is deliberate on a relay reached by address, or one presenting a
+     * certificate for another name, and mail is still delivered over an encrypted
+     * connection; what that connection no longer establishes is who is on the other
+     * end of it. Silent when no encryption mode is in use, since there is then no
+     * certificate to check and {@link #describeCredentialExposure(String, boolean, boolean)}
+     * already names the larger problem.
+     *
+     * @param verifyServerIdentity the configured {@code smtp.verify-server-identity}
+     * @param useTLS               the configured {@code smtp.use-tls}
+     * @param implicitTLS          the configured {@code smtp.implicit-tls}
+     * @return the warning to log, or {@code null} when nothing is being skipped
+     */
+    public static String describeUnverifiedServerIdentity(boolean verifyServerIdentity, boolean useTLS,
+                                                          boolean implicitTLS) {
+        if (verifyServerIdentity || !(useTLS || implicitTLS)) {
+            return null;
+        }
+        return "'smtp.verify-server-identity' is false, so the certificate the SMTP server presents is not "
+                + "checked against 'smtp.server'. The connection is still encrypted, but it is no longer "
+                + "established that it is encrypted with the host that was asked for. Set "
+                + "'smtp.verify-server-identity' back to true unless the server is reached by an address the "
+                + "certificate cannot name.";
     }
 
     /**
@@ -320,6 +368,14 @@ public class EmailNotifier implements Notifier {
      * session cannot do both. Herald refuses the combination at startup, so the
      * precedence below only decides what a caller that built the notifier directly gets.
      *
+     * <p>{@code mail.smtp.ssl.checkserveridentity} is set explicitly whenever either mode
+     * is in use, in both directions, rather than being left to the mail library: the
+     * pinned {@code com.sun.mail:jakarta.mail:2.0.1} defaults it to {@code false}, and a
+     * later version defaults it the other way, so leaving it unset would make whether the
+     * certificate is checked against {@code smtp.server} a property of the dependency
+     * version rather than of Herald. It is left unset when neither mode is in use, since
+     * there is then no handshake for it to govern.
+     *
      * @return the SMTP properties for this notifier's configuration
      */
     Properties buildSessionProperties() {
@@ -336,6 +392,10 @@ public class EmailNotifier implements Notifier {
         } else if (useTLS) {
             props.put("mail.smtp.starttls.enable", "true");
             props.put("mail.smtp.starttls.required", "true");
+        }
+
+        if (implicitTLS || useTLS) {
+            props.put("mail.smtp.ssl.checkserveridentity", String.valueOf(verifyServerIdentity));
         }
 
         return props;

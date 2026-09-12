@@ -479,7 +479,7 @@ class HeraldIntegrationTest {
 
             List<String> leafKeys = List.of("server-name", "webhook-url", "join-messages",
                     "email-recipients", "server", "port", "username", "password", "use-tls",
-                    "sender", "subject", "body");
+                    "implicit-tls", "verify-server-identity", "sender", "subject", "body");
 
             for (String key : leafKeys) {
                 assertTrue(config.contains(key + ":"),
