@@ -1,18 +1,29 @@
 package com.dansplugins.herald;
 
+import com.dansplugins.herald.trace.TraceClient;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.logging.Level;
 
 public final class Herald extends JavaPlugin implements Listener {
 
+    private static final String USAGE_REPORTING_ENABLED_KEY = "usage-reporting.enabled";
+    private static final String USAGE_REPORTING_ENDPOINT_KEY = "usage-reporting.endpoint";
+    private static final String USAGE_REPORTING_KEY_KEY = "usage-reporting.key";
+    private static final String DEFAULT_USAGE_REPORTING_ENDPOINT = "https://trace.danielstephenson.dev";
+
     private final List<Notifier> notifiers = new ArrayList<>();
     private String serverName = ServerName.DEFAULT;
+
+    // A no-op until the config has been read, so anything that reports before
+    // onEnable() finishes has something safe to report to.
+    private TraceClient trace = TraceClient.disabled();
 
     @Override
     public void onEnable() {
@@ -25,12 +36,46 @@ public final class Herald extends JavaPlugin implements Listener {
         // Register event listener
         getServer().getPluginManager().registerEvents(this, this);
 
+        // usage reporting: one event now; see config.yml
+        trace = TraceClient.builder(getUsageReportingEndpoint(), getName())
+                .key(getUsageReportingKey())
+                .enabled(isUsageReportingEnabled())
+                .logger(getLogger())
+                .build();
+        trace.report("startup", null, Collections.singletonMap("version", getDescription().getVersion()));
+
         getLogger().info("Herald has been enabled!");
     }
 
     @Override
     public void onDisable() {
+        trace.close();
+
         getLogger().info("Herald has been disabled!");
+    }
+
+    // The one-argument getters, deliberately. saveDefaultConfig() never touches a
+    // config.yml that already exists, so a server upgraded from a version before
+    // usage reporting has no usage-reporting block on disk. Bukkit registers the
+    // jar's config.yml as the defaults for that file, and the one-argument
+    // getters fall through to them -- but the two-argument getters return their
+    // explicit fallback instead, which for the key would be "" and would turn
+    // reporting off on every existing installation. Verified against
+    // YamlConfiguration, not assumed.
+
+    private boolean isUsageReportingEnabled() {
+        return getConfig().getBoolean(USAGE_REPORTING_ENABLED_KEY);
+    }
+
+    private String getUsageReportingEndpoint() {
+        String endpoint = getConfig().getString(USAGE_REPORTING_ENDPOINT_KEY);
+        return endpoint != null ? endpoint : DEFAULT_USAGE_REPORTING_ENDPOINT;
+    }
+
+    /** Empty when no key is configured or bundled, which the client treats as "off". */
+    private String getUsageReportingKey() {
+        String key = getConfig().getString(USAGE_REPORTING_KEY_KEY);
+        return key != null ? key : "";
     }
 
     private void loadConfiguration() {
