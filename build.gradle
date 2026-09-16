@@ -23,6 +23,8 @@ dependencies {
     implementation 'com.sun.mail:jakarta.mail:2.0.1'
     
     // Test dependencies
+    // The Spigot API is compileOnly above, so it is repeated here to put it on the test classpath.
+    testImplementation("org.spigotmc:spigot-api:1.21.4-R0.1-SNAPSHOT")
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }

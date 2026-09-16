@@ -1,6 +1,8 @@
 package com.dansplugins.herald;
 
 import com.dansplugins.herald.trace.TraceClient;
+import org.bukkit.configuration.Configuration;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
@@ -36,12 +38,27 @@ public final class Herald extends JavaPlugin implements Listener {
         // Register event listener
         getServer().getPluginManager().registerEvents(this, this);
 
-        // usage reporting: one event now; see config.yml
+        // usage reporting: one event now; see config.yml. The block is written to a
+        // config.yml that predates it so the opt-out is visible, and the server-wide
+        // switch in plugins/trace/config.yml is created if absent and honoured.
+        if (ensureUsageReportingBlockOnDisk(getConfig())) {
+            saveConfig();
+        }
         trace = TraceClient.builder(getUsageReportingEndpoint(), getName())
                 .key(getUsageReportingKey())
                 .enabled(isUsageReportingEnabled())
+                .serverWideConfig(getDataFolder().getParentFile())
                 .logger(getLogger())
                 .build();
+        if (trace.isEnabled()) {
+            getLogger().info("Usage reporting is on: " + getName() + " sends its name and version to"
+                    + " https://trace.danielstephenson.dev - nothing about players or the server. Turn it off with"
+                    + " usage-reporting.enabled: false in this plugin's config.yml, or for every plugin with"
+                    + " enabled: false in plugins/trace/config.yml."
+                    + " Details: https://github.com/Stephenson-Software/trace#usage-reporting");
+        } else {
+            getLogger().info("Usage reporting is off (" + trace.disabledReason() + ").");
+        }
         trace.report("startup", null, Collections.singletonMap("version", getDescription().getVersion()));
 
         getLogger().info("Herald has been enabled!");
@@ -54,13 +71,37 @@ public final class Herald extends JavaPlugin implements Listener {
         getLogger().info("Herald has been disabled!");
     }
 
-    // The one-argument getters, deliberately. saveDefaultConfig() never touches a
-    // config.yml that already exists, so a server upgraded from a version before
-    // usage reporting has no usage-reporting block on disk. Bukkit registers the
-    // jar's config.yml as the defaults for that file, and the one-argument
-    // getters fall through to them -- but the two-argument getters return their
-    // explicit fallback instead, which for the key would be "" and would turn
-    // reporting off on every existing installation. Verified against
+    /**
+     * Copies the {@code usage-reporting} block from the bundled defaults into a configuration
+     * that lacks it, so that a server upgraded from a version before the block existed sees
+     * the opt-out in its config.yml. {@code saveDefaultConfig()} never touches an existing
+     * file, which is why this is needed at all. The values are the bundled defaults, not new
+     * literals. {@code isSet} is deliberate: unlike {@code contains} it ignores the registered
+     * defaults and answers only for what the file holds.
+     *
+     * @return true when the block was added and the configuration needs saving
+     */
+    static boolean ensureUsageReportingBlockOnDisk(FileConfiguration config) {
+        if (config.isSet("usage-reporting")) {
+            return false;
+        }
+        Configuration defaults = config.getDefaults();
+        if (defaults == null) {
+            return false;
+        }
+        for (String key : List.of(USAGE_REPORTING_ENABLED_KEY, USAGE_REPORTING_ENDPOINT_KEY, USAGE_REPORTING_KEY_KEY)) {
+            config.set(key, defaults.get(key));
+        }
+        return true;
+    }
+
+    // The one-argument getters, deliberately. Bukkit registers the jar's config.yml
+    // as the defaults for the file on disk, and the one-argument getters fall
+    // through to them for any key the file lacks -- the two-argument getters
+    // return their explicit fallback instead, which for the key would be "" and
+    // would read as "off". ensureUsageReportingBlockOnDisk() writes the block for
+    // an upgraded server, so on a normal enable the file has the keys; the
+    // fall-through only matters if that write failed. Verified against
     // YamlConfiguration, not assumed.
 
     private boolean isUsageReportingEnabled() {
