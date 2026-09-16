@@ -307,9 +307,19 @@ When the plugin is enabled, a small event is sent to the author's
 [trace](https://github.com/Stephenson-Software/trace-client-java) server so it is known which
 plugins are actually in use. An event carries the plugin's name, the event name (`startup`), and the
 plugin version — nothing about players, the world, or the server. Sending happens off the main
-thread, never delays a tick, and is dropped silently if the server cannot be reached. Set
-`usage-reporting.enabled` to `false` to turn it off.
+thread, never delays a tick, and is dropped silently if the server cannot be reached. The plugin
+says on the console at every start whether reporting is on.
 
-A `config.yml` written before the `usage-reporting` block existed is never rewritten, and reporting
-is still active on such an installation: the plugin reads the bundled defaults for any key the file
-lacks. Add the block with `enabled: false` to turn it off there.
+To turn it off, in order of precedence:
+
+- the environment variable `TRACE_USAGE_REPORTING=off` (or `DO_NOT_TRACK=1`) turns it off for every
+  program in the server process;
+- `enabled: false` in `plugins/trace/config.yml` turns it off for every plugin on the server that
+  reports to trace — the file is created with `enabled: true` by the first such plugin to start and
+  is never turned back on by a plugin;
+- `usage-reporting.enabled: false` in this plugin's `config.yml` turns it off for Herald alone.
+
+A `config.yml` written before the `usage-reporting` block existed is given the block, with the
+bundled values, the next time the plugin starts, so the switch is visible in the file; until then
+the plugin reads the bundled defaults for any key the file lacks. Details:
+https://github.com/Stephenson-Software/trace#usage-reporting

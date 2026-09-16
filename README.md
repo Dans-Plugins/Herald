@@ -97,6 +97,16 @@ You are free to use, modify, and distribute this software, provided that:
 
 See the [LICENSE](LICENSE) file for the full text of the GPL-3.0 license.
 
+## Usage reporting
+
+Usage reporting is on by default: when the plugin is enabled, it sends its name and version to the author's [trace](https://trace.danielstephenson.dev) server so it is known which plugins are actually in use. Herald has no commands, so that startup event is the only one. Nothing about players, worlds, IPs or the server is sent. The plugin says on the console at every start whether reporting is on. To turn it off:
+
+- for this plugin: set `usage-reporting.enabled` to `false` in `plugins/Herald/config.yml`;
+- for every plugin on the server that reports to trace: set `enabled` to `false` in `plugins/trace/config.yml` (created on first start);
+- for the whole server process: set the environment variable `TRACE_USAGE_REPORTING=off` or `DO_NOT_TRACK=1`.
+
+Details: https://github.com/Stephenson-Software/trace#usage-reporting
+
 ## Project Status
 
 This project is in active development.
