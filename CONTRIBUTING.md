@@ -37,15 +37,59 @@ Issues are grouped into [milestones](https://github.com/Dans-Plugins/Herald/mile
 
 ## Making Changes
 
-1. Make sure an issue exists for the work. If not, create one.
+1. Make sure an issue exists for the work. If not, create one using one of the [issue templates](https://github.com/Dans-Plugins/Herald/issues/new/choose).
 2. Switch to `main`: `git checkout main`
-3. Create a branch: `git checkout -b <branch-name>`
+3. Create a branch: `git checkout -b feature/<short-description>` (see [Branch names](#branch-names) for the other prefixes).
 4. Make your changes.
 5. Test your changes.
-6. Commit: `git commit -m "Description of changes"`
-7. Push: `git push origin <branch-name>`
-8. Open a pull request against `main`, link the related issue with `#<number>`.
+6. Commit: `git commit -m "Add the thing"` (see [Commit messages](#commit-messages)).
+7. Push: `git push origin feature/<short-description>`
+8. Open a pull request against `main` with `Closes #<number>` in the description so the issue closes when the PR merges.
 9. Address review feedback.
+
+## Commit and Pull Request Conventions
+
+### Branch names
+
+Branches are prefixed by the kind of change they carry:
+
+| Prefix | Used for |
+|--------|----------|
+| `feature/` | New behaviour or configuration options |
+| `fix/` | Bug fixes |
+| `chore/` | Release bumps, dependency updates, and other housekeeping |
+| `ci/` | Changes under `.github/workflows/` |
+
+For example: `feature/smtp-implicit-tls`, `fix/dev-release-retry`, `chore/release-2.0.0`.
+
+### Commit messages
+
+- Write the subject line in the imperative mood, as an instruction: `Add smtp.implicit-tls for SMTPS on port 465`, not `Added ...` or `Adds ...`.
+- No trailing period on the subject line.
+- Keep the subject under about 72 characters; put any further explanation in the body after a blank line.
+- Release and CI housekeeping commits may carry a `chore:` or `ci:` prefix, matching the branch prefix.
+
+Commits authored with an AI agent carry a `Co-Authored-By` trailer on its own line, separated from the body by a blank line. Use a heredoc so the trailer survives quoting:
+
+```bash
+git commit -m "$(cat <<'EOF'
+Add smtp.implicit-tls for SMTPS on port 465
+
+Co-Authored-By: <agent name> <noreply@anthropic.com>
+EOF
+)"
+```
+
+### Pull requests
+
+- Open pull requests against `main`.
+- Reference every issue the pull request resolves with `Closes #<number>` in the description, one per line, so GitHub closes them automatically on merge.
+- Include a short summary of what changed and why, and a test plan describing how the change was verified.
+- Document any new config option in [CONFIG.md](CONFIG.md) and add an entry under `[Unreleased]` in [CHANGELOG.md](CHANGELOG.md) in the same pull request.
+
+### Merge strategy
+
+Pull requests are **squash-merged** into `main`, so `main` carries one commit per pull request, titled after the pull request and suffixed with its number (for example `chore: 2.0.1-SNAPSHOT (#57)`). Keep the pull request title in the same imperative, no-trailing-period style as a commit subject, since it becomes the commit subject on `main`. Delete the branch once the pull request has merged.
 
 ## Testing
 
