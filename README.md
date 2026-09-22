@@ -10,7 +10,7 @@ Herald is a Minecraft server plugin that sends Discord webhook notifications whe
 
 ### First Time Installation
 
-1. Download the Herald plugin JAR file.
+1. Download the Herald plugin JAR file from the [releases page](https://github.com/Dans-Plugins/Herald/releases).
 2. Place the JAR in the `plugins` folder of your server.
 3. Restart your server.
 4. Edit the generated `plugins/Herald/config.yml` to configure notification settings.
@@ -35,7 +35,7 @@ You can find the support Discord server [here](https://discord.gg/xXtuAQ2).
 
 ### Experiencing a bug?
 
-Please fill out a bug report [here](https://github.com/Dans-Plugins/Herald/issues/new).
+Please fill out a bug report [here](https://github.com/Dans-Plugins/Herald/issues/new?template=bug_report.md).
 
 - [Known Bugs](https://github.com/Dans-Plugins/Herald/issues?q=is%3Aissue+is%3Aopen+label%3Abug)
 
