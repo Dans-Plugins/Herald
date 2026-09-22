@@ -57,17 +57,18 @@ Branches are prefixed by the kind of change they carry:
 |--------|----------|
 | `feature/` | New behaviour or configuration options |
 | `fix/` | Bug fixes |
-| `chore/` | Release bumps, dependency updates, and other housekeeping |
+| `docs/` | Documentation-only changes (`README.md`, `CONFIG.md`, `USER_GUIDE.md`, and the like) |
+| `chore/` | Release bumps, dependency updates, repository metadata, and other housekeeping |
 | `ci/` | Changes under `.github/workflows/` |
 
-For example: `feature/smtp-implicit-tls`, `fix/dev-release-retry`, `chore/release-2.0.0`.
+For example: `feature/smtp-implicit-tls`, `fix/dev-release-retry`, `docs/config-guide-placeholders`, `chore/release-2.0.0`.
 
 ### Commit messages
 
 - Write the subject line in the imperative mood, as an instruction: `Add smtp.implicit-tls for SMTPS on port 465`, not `Added ...` or `Adds ...`.
 - No trailing period on the subject line.
 - Keep the subject under about 72 characters; put any further explanation in the body after a blank line.
-- Release and CI housekeeping commits may carry a `chore:` or `ci:` prefix, matching the branch prefix.
+- Documentation, release, and CI housekeeping commits may carry a `docs:`, `chore:`, or `ci:` prefix, matching the branch prefix.
 
 Commits authored with an AI agent carry a `Co-Authored-By` trailer on its own line, separated from the body by a blank line. Use a heredoc so the trailer survives quoting:
 
@@ -89,7 +90,9 @@ EOF
 
 ### Merge strategy
 
-Pull requests are **squash-merged** into `main`, so `main` carries one commit per pull request, titled after the pull request and suffixed with its number (for example `chore: 2.0.1-SNAPSHOT (#57)`). Keep the pull request title in the same imperative, no-trailing-period style as a commit subject, since it becomes the commit subject on `main`. Delete the branch once the pull request has merged.
+Pull requests are **squash-merged** into `main`, so each pull request lands as one commit titled after the pull request and suffixed with its number (for example `chore: 2.0.1-SNAPSHOT (#57)`). Keep the pull request title in the same imperative, no-trailing-period style as a commit subject, since it becomes the commit subject on `main`. Delete the branch once the pull request has merged.
+
+Every pull request since #47 has landed this way. Older history contains a few merge commits (for example #38, #43 and #46), so anything that walks `main` expecting exactly one commit per pull request should not assume it of commits before that point.
 
 ## Testing
 
