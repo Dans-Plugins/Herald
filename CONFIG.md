@@ -81,7 +81,7 @@ discord:
 
 **Type:** list of strings
 **Default:** `[]`
-**Description:** List of email addresses that will receive a notification when a player joins. This, `smtp.server`, and `email.sender` must all be configured — and `smtp.port` must be a valid port — for email notifications to be active; if any of them is missing or invalid, Herald logs a warning naming the offending key at startup and skips email notifications.
+**Description:** List of email addresses that will receive a notification when a player joins. This, `smtp.server`, and `email.sender` must all be configured — and `smtp.port` must be a valid port — for email notifications to be active; if any of them is missing or invalid, Herald skips email notifications. It logs a warning naming each offending key at startup once at least one of `email-recipients`, `smtp.server` and `email.sender` has been filled in; while all three are empty, as in a freshly generated `config.yml`, email is treated as not set up and no email warning is logged.
 
 Every entry must be a parseable address. Herald checks each one at startup and names the offending address in the warning, so a typo such as `admin@` (no domain) is reported once at startup rather than on every player join. A display name is accepted, e.g. `Server Admin <admin@example.com>`.
 
@@ -110,7 +110,7 @@ smtp:
 
 **Type:** integer
 **Default:** `587`
-**Description:** The port of your SMTP server. Use `587` for STARTTLS with `smtp.use-tls`, `465` for implicit TLS with `smtp.implicit-tls`, or `25` for plain SMTP with both of those set to `false`. Must be between `1` and `65535`; if it is set to a value outside that range, Herald logs a warning at startup and skips email notifications.
+**Description:** The port of your SMTP server. Use `587` for STARTTLS with `smtp.use-tls`, `465` for implicit TLS with `smtp.implicit-tls`, or `25` for plain SMTP with both of those set to `false`. Must be between `1` and `65535`; if it is set to a value outside that range, Herald skips email notifications, and logs a warning at startup when any of the other required email keys is filled in (see `email-recipients`).
 
 The port and the encryption mode have to agree, because a server on `465` negotiates TLS before the first command while one on `587` expects a plain connection that STARTTLS then upgrades. Herald warns at startup when the two conventional ports are paired with the wrong mode, rather than leaving a protocol error to be read off the first player join:
 
