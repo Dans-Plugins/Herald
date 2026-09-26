@@ -101,9 +101,13 @@ Run the unit tests with:
 Linux: `./gradlew clean test`
 Windows: `.\gradlew.bat clean test`
 
-For manual testing, start a local Spigot server:
+For manual testing, start the Docker-based Spigot test server. The image copies the plugin JAR from `build/libs`, so build it first, and `compose.yml` reads its settings from `.env`:
 
-    docker compose up
+    ./gradlew build
+    cp sample.env .env
+    ./up.sh
+
+`./down.sh` stops it again. See [Development](README.md#development) in the README for details.
 
 ## Questions
 
