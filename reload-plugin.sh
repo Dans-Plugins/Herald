@@ -1,23 +1,38 @@
 #!/usr/bin/env bash
-# Rebuild the plugin and hot-reload it in the running Docker test server.
+# Rebuild the plugin and restart the running Docker test server so it loads the new JAR.
 set -euo pipefail
+
+CONTAINER="herald-test-mc-server"
+# post-create.sh copies the JAR from this directory into plugins/ every time the container starts.
+BUILD_TARGET="/testmcserver-build/Herald/target"
+PLUGINS_DIR="/testmcserver/plugins"
+
+if [ "$(docker inspect -f '{{.State.Running}}' "$CONTAINER" 2>/dev/null)" != "true" ]; then
+  echo "❌ Container $CONTAINER is not running. Start the test server with ./up.sh first."
+  exit 1
+fi
 
 echo "Building plugin..."
 ./gradlew build
 
-CONTAINER="herald-test-mc-server"
-PLUGIN_NAME="Herald"
-JAR=$(find build/libs -maxdepth 1 -name '*.jar' ! -name '*-sources.jar' ! -name '*-javadoc.jar' | head -1)
+# Newest first, so a JAR left in build/libs by an earlier version is not picked up.
+JAR=$(ls -t build/libs/Herald-*.jar 2>/dev/null | grep -v -e '-sources\.jar$' -e '-javadoc\.jar$' | head -1 || true)
 
 if [ -z "$JAR" ]; then
   echo "❌ No JAR found in build/libs/"
   exit 1
 fi
 
-echo "Copying $JAR into container..."
-docker cp "$JAR" "$CONTAINER:/testmcserver/plugins/$PLUGIN_NAME.jar"
+JAR_NAME=$(basename "$JAR")
 
-echo "Reloading plugin via ServerUtils..."
-docker exec "$CONTAINER" rcon-cli "serverutils reload $PLUGIN_NAME"
+echo "Replacing the plugin JAR in the container..."
+# Stage the new JAR first so a failed copy leaves the installed plugin untouched.
+docker cp "$JAR" "$CONTAINER:/tmp/$JAR_NAME"
+# Remove every Herald JAR before moving the new one in, so a version bump, or a Herald.jar
+# left by an older version of this script, does not leave two copies of the plugin in plugins/.
+docker exec "$CONTAINER" sh -c "rm -f $BUILD_TARGET/Herald-*.jar $PLUGINS_DIR/Herald*.jar && mv /tmp/$JAR_NAME $BUILD_TARGET/"
 
-echo "✅ $PLUGIN_NAME reloaded."
+echo "Restarting the test server..."
+docker restart "$CONTAINER" > /dev/null
+
+echo "✅ Copied $JAR_NAME and restarted $CONTAINER. Follow startup with: docker logs -f $CONTAINER"

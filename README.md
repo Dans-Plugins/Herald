@@ -59,7 +59,7 @@ If you see `BUILD SUCCESSFUL`, the tests have passed.
 
 ## Development
 
-### Test Server with Plugin Hot-Reloading
+### Test Server
 
 A Docker-based test server is available for development.
 
@@ -72,6 +72,8 @@ A Docker-based test server is available for development.
 #### Reloading the Plugin
 
     ./reload-plugin.sh
+
+This rebuilds the plugin, replaces the Herald JAR in the running test server container, and restarts the container so the server starts with the new build. It does not hot-reload the plugin in place, so connected players are disconnected. With `OVERWRITE_EXISTING_SERVER=true` in `.env`, the restart also wipes the server directory, world included, as `./up.sh` does.
 
 #### Stopping the Test Server
 
