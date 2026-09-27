@@ -23,13 +23,16 @@ if [ -z "$JAR" ]; then
   exit 1
 fi
 
+JAR_NAME=$(basename "$JAR")
+
 echo "Replacing the plugin JAR in the container..."
-# Remove every Herald JAR first so a version bump, or a Herald.jar left by an older
-# version of this script, does not leave two copies of the plugin in plugins/.
-docker exec "$CONTAINER" sh -c "rm -f $BUILD_TARGET/Herald-*.jar $PLUGINS_DIR/Herald*.jar"
-docker cp "$JAR" "$CONTAINER:$BUILD_TARGET/"
+# Stage the new JAR first so a failed copy leaves the installed plugin untouched.
+docker cp "$JAR" "$CONTAINER:/tmp/$JAR_NAME"
+# Remove every Herald JAR before moving the new one in, so a version bump, or a Herald.jar
+# left by an older version of this script, does not leave two copies of the plugin in plugins/.
+docker exec "$CONTAINER" sh -c "rm -f $BUILD_TARGET/Herald-*.jar $PLUGINS_DIR/Herald*.jar && mv /tmp/$JAR_NAME $BUILD_TARGET/"
 
 echo "Restarting the test server..."
 docker restart "$CONTAINER" > /dev/null
 
-echo "✅ Copied $(basename "$JAR") and restarted $CONTAINER. Follow startup with: docker logs -f $CONTAINER"
+echo "✅ Copied $JAR_NAME and restarted $CONTAINER. Follow startup with: docker logs -f $CONTAINER"
