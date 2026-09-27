@@ -39,7 +39,9 @@ tasks {
     }
 }
 
-def targetJavaVersion = 21
+// 17, not newer: the oldest Minecraft version in minecraft-versions.json (1.19.4) runs on
+// Java 17-20 and cannot load classes compiled for a later Java.
+def targetJavaVersion = 17
 java {
     def javaVersion = JavaVersion.toVersion(targetJavaVersion)
     sourceCompatibility = javaVersion
