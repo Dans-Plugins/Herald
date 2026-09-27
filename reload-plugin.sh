@@ -15,7 +15,8 @@ fi
 echo "Building plugin..."
 ./gradlew build
 
-JAR=$(find build/libs -maxdepth 1 -name 'Herald-*.jar' ! -name '*-sources.jar' ! -name '*-javadoc.jar' | head -1)
+# Newest first, so a JAR left in build/libs by an earlier version is not picked up.
+JAR=$(ls -t build/libs/Herald-*.jar 2>/dev/null | grep -v -e '-sources\.jar$' -e '-javadoc\.jar$' | head -1 || true)
 
 if [ -z "$JAR" ]; then
   echo "❌ No JAR found in build/libs/"
