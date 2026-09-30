@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- The vendored trace client is now 0.4.0, which tags every usage event with the plugin version. Herald sends only `startup`, which already carried it, so what is sent is unchanged.
+
 ### Fixed
 
 - `reload-plugin.sh` now restarts the Docker test server after copying in the new JAR, instead of asking `rcon-cli` to run a ServerUtils reload. Neither `rcon-cli` nor ServerUtils is installed in the test container and RCON is not enabled, so the script used to copy the JAR in and then exit with an error without reloading anything, leaving a second `Herald.jar` beside the original that could load the plugin twice on the next start. The script now also removes any Herald JAR already in `plugins/` before copying, so a version bump does not leave two copies either. The script is not exercised by CI; it was checked by reading it against `.testcontainer/post-create.sh`.
