@@ -9,7 +9,6 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.logging.Level;
 
@@ -44,7 +43,7 @@ public final class Herald extends JavaPlugin implements Listener {
         if (ensureUsageReportingBlockOnDisk(getConfig())) {
             saveConfig();
         }
-        trace = TraceClient.builder(getUsageReportingEndpoint(), getName())
+        trace = TraceClient.builder(getUsageReportingEndpoint(), getName(), getDescription().getVersion())
                 .key(getUsageReportingKey())
                 .enabled(isUsageReportingEnabled())
                 .serverWideConfig(getDataFolder().getParentFile())
@@ -59,7 +58,7 @@ public final class Herald extends JavaPlugin implements Listener {
         } else {
             getLogger().info("Usage reporting is off (" + trace.disabledReason() + ").");
         }
-        trace.report("startup", null, Collections.singletonMap("version", getDescription().getVersion()));
+        trace.report("startup");
 
         getLogger().info("Herald has been enabled!");
     }
