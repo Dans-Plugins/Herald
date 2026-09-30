@@ -2,8 +2,8 @@
 
 ## Prerequisites
 
-- A Minecraft server running Spigot or Paper 1.16+
-- Java 21 or higher
+- A Minecraft server running Spigot or one of its forks, such as Paper, on 1.19.4 or newer — see [Supported Minecraft Versions](README.md#supported-minecraft-versions) for the versions every release is tested on
+- Java 17 or higher, or whatever newer Java your Minecraft version itself requires
 - (Optional) A Discord server with a webhook URL for Discord notifications
 - (Optional) An SMTP mail server for email notifications
 

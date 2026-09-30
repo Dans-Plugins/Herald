@@ -58,7 +58,8 @@ email:
 # Usage reporting. When the plugin is enabled, a small event (plugin name,
 # event name, plugin version) is sent to the author's trace server so it is
 # known which plugins are actually in use. Nothing about players or the
-# server is included. Sending happens off the main thread, never blocks a
+# server is included, apart from any tags added under tags: in
+# plugins/trace/config.yml. Sending happens off the main thread, never blocks a
 # tick, and is dropped silently if the server cannot be reached. Set enabled
 # to false to turn it off for this plugin. To turn it off for every plugin on
 # this server that reports to trace, set enabled to false in
