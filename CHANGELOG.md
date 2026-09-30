@@ -12,7 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
-- Herald is now compiled for Java 17 instead of Java 21, so it loads on Minecraft 1.19.4, whose servers run on Java 17–20 and refused the plugin with an `UnsupportedClassVersionError`. The supported versions — currently 1.19.4, 1.21.11 and 26.2 — are declared in `minecraft-versions.json` and listed in the README, and every build checks that the plugin uses only Bukkit API present on all of them.
+- Herald is now compiled for Java 17 instead of Java 21, so it loads on Minecraft 1.19.4, whose servers run on Java 17–20 and refused the plugin with an `UnsupportedClassVersionError`. The supported versions — currently 1.19.4, 1.21.11 and 26.2 — are declared in `minecraft-versions.json` and listed in the README, and the CI `Build` workflow checks that the plugin uses only Bukkit API present on all of them and bytecode each of them can load.
 
 - `reload-plugin.sh` now restarts the Docker test server after copying in the new JAR, instead of asking `rcon-cli` to run a ServerUtils reload. Neither `rcon-cli` nor ServerUtils is installed in the test container and RCON is not enabled, so the script used to copy the JAR in and then exit with an error without reloading anything, leaving a second `Herald.jar` beside the original that could load the plugin twice on the next start. The script now also removes any Herald JAR already in `plugins/` before copying, so a version bump does not leave two copies either. The script is not exercised by CI; it was checked by reading it against `.testcontainer/post-create.sh`.
 
