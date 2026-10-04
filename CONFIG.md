@@ -306,7 +306,7 @@ usage-reporting:
 When the plugin is enabled, a small event is sent to the author's
 [trace](https://github.com/Stephenson-Software/trace-client-java) server so it is known which
 plugins are actually in use. An event carries the plugin's name, the event name (`startup`), and the
-plugin version — nothing about players, the world, or the server. The one addition is whatever the
+plugin version, plus a random server ID (the `server-id` line in `plugins/trace/config.yml`, which identifies no person, account or IP address; deleting the line gets a new one) — nothing about players or the world. The one addition is whatever the
 server's operator puts there: a `tags:` block in `plugins/trace/config.yml` is added to every event
 every such plugin on the server reports, so a test server can mark its events with `ci: "true"` and
 be left out of the figures for real installations. The file is created with that block commented
