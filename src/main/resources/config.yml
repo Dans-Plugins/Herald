@@ -69,7 +69,7 @@ email:
 # variables TRACE_USAGE_REPORTING=off and DO_NOT_TRACK=1 do the same for the
 # whole server process. The plugin says on the console at every start whether
 # reporting is on. Details:
-# https://github.com/Stephenson-Software/trace#usage-reporting
+# https://danielstephenson.dev/usage-reporting
 usage-reporting:
   enabled: true
   endpoint: https://trace.danielstephenson.dev
