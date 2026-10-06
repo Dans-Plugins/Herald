@@ -326,4 +326,4 @@ To turn it off, in order of precedence:
 A `config.yml` written before the `usage-reporting` block existed is given the block, with the
 bundled values, the next time the plugin starts, so the switch is visible in the file; until then
 the plugin reads the bundled defaults for any key the file lacks. Details:
-https://github.com/Stephenson-Software/trace#usage-reporting
+https://danielstephenson.dev/usage-reporting
