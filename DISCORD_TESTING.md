@@ -24,10 +24,12 @@ This directory contains scripts to test Discord webhook notifications without ru
 
 ## Usage
 
+Both scripts take the same arguments: the webhook URL, then an optional player name (default `TestPlayer`) and an optional server name (default `Minecraft`).
+
 ### Bash Script
 
 ```bash
-# Basic usage (uses default player and server names)
+# Basic usage (player "TestPlayer", server "Minecraft")
 ./test-discord-webhook.sh https://discord.com/api/webhooks/123456/abcdef
 
 # With custom player name
@@ -40,7 +42,7 @@ This directory contains scripts to test Discord webhook notifications without ru
 ### Python Script
 
 ```bash
-# Basic usage (uses default player and server names)
+# Basic usage (player "TestPlayer", server "Minecraft")
 python3 test-discord-webhook.py https://discord.com/api/webhooks/123456/abcdef
 
 # With custom player name
@@ -63,10 +65,12 @@ This confirms the webhook plumbing works end-to-end, but the message text is a f
 
 ## Example Output
 
+The examples below are the Python script's output. The Bash script prints the same lines with these differences: its banner reads `Discord Webhook Test Script` without `(Python)`; it prints `Compiling test script...`, `Compilation successful` and `Sending test message...` before the `Testing Discord webhook...` block rather than after it; it prints no blank line between `Response code:` and the success or error line; and on failure it also prints a Java stack trace.
+
 ### Successful Test
 ```
 ========================================
-Discord Webhook Test Script
+Discord Webhook Test Script (Python)
 ========================================
 
 Testing Discord webhook...
@@ -78,6 +82,7 @@ Sending test message...
 
 Sending payload: {"content": "**Steve** joined the **My Awesome Server** server"}
 Response code: 204
+
 ✓ SUCCESS: Message sent to Discord!
 Check your Discord channel for the notification.
 
@@ -89,7 +94,7 @@ Test completed successfully!
 ### Failed Test
 ```
 ========================================
-Discord Webhook Test Script
+Discord Webhook Test Script (Python)
 ========================================
 
 Testing Discord webhook...
@@ -98,6 +103,9 @@ Player Name: Steve
 Server Name: Minecraft
 
 Sending test message...
+
+Sending payload: {"content": "**Steve** joined the **Minecraft** server"}
+Response code: 404
 
 ✗ ERROR: Failed to send message to Discord
 Error: Discord webhook returned error code: 404

@@ -78,5 +78,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Docker Compose setup for local mail-server testing
 - Discord webhook test scripts (Bash and Python)
 
-[Unreleased]: https://github.com/Dans-Plugins/Herald/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/Dans-Plugins/Herald/releases/tag/v1.0.0
+[Unreleased]: https://github.com/Dans-Plugins/Herald/compare/2.0.0-SNAPSHOT-8-8-2026...HEAD
+[2.0.0-SNAPSHOT-8-8-2026]: https://github.com/Dans-Plugins/Herald/releases/tag/2.0.0-SNAPSHOT-8-8-2026
+[1.0.0]: https://github.com/Dans-Plugins/Herald/releases/tag/1.0.0
