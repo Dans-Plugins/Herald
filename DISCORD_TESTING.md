@@ -24,9 +24,9 @@ This directory contains scripts to test Discord webhook notifications without ru
 
 ## Usage
 
-### Bash Script
-
 Both scripts take the same arguments: the webhook URL, then an optional player name (default `TestPlayer`) and an optional server name (default `Minecraft`).
+
+### Bash Script
 
 ```bash
 # Basic usage (player "TestPlayer", server "Minecraft")
@@ -65,7 +65,7 @@ This confirms the webhook plumbing works end-to-end, but the message text is a f
 
 ## Example Output
 
-The examples below are the Python script's output. The Bash script prints the same lines with three differences: its banner reads `Discord Webhook Test Script` without `(Python)`, it prints `Compiling test script...`, `Compilation successful` and `Sending test message...` before the `Testing Discord webhook...` block rather than after it, and on failure it also prints a Java stack trace.
+The examples below are the Python script's output. The Bash script prints the same lines with these differences: its banner reads `Discord Webhook Test Script` without `(Python)`; it prints `Compiling test script...`, `Compilation successful` and `Sending test message...` before the `Testing Discord webhook...` block rather than after it; it prints no blank line between `Response code:` and the success or error line; and on failure it also prints a Java stack trace.
 
 ### Successful Test
 ```
