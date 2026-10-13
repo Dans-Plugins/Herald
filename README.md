@@ -27,7 +27,7 @@ Herald can send notifications through Discord webhooks, SMTP email, or both. See
 ### Documentation
 
 - [User Guide](USER_GUIDE.md) – Getting started and common scenarios
-- [Commands Reference](COMMANDS.md) – Complete list of all commands
+- [Commands Reference](COMMANDS.md) – Herald registers no commands; everything is configured in `config.yml`
 - [Configuration Guide](CONFIG.md) – Detailed configuration options
 - [Discord Testing](DISCORD_TESTING.md) – Testing Discord webhooks without a server
 - [Changelog](CHANGELOG.md) – Release-by-release summary of changes
@@ -68,9 +68,11 @@ A Docker-based test server is available for development.
 
 #### Setup
 
-1. Copy `sample.env` to `.env` and configure as needed.
-2. Build the plugin: `./gradlew build`
-3. Start the test server: `./up.sh`
+1. Copy `sample.env` to `.env` and configure as needed. Leave `MINECRAFT_VERSION` at `1.21.4`: the `Dockerfile` builds only that Spigot version (`BuildTools.jar --rev 1.21.4`), and the Minecraft server in the container fails to start if `.env` names any other.
+2. Build the plugin: `./gradlew build`. The image copies the JAR from `build/libs` rather than building it.
+3. Start the test server: `./up.sh`. This stops any running test stack first, then rebuilds and starts it.
+
+The stack also starts a Postfix mail server (`mailserver`, on ports `25` and `587`) that relays everything to MailHog, so emails Herald sends can be read in MailHog's web interface at http://localhost:8025 instead of being delivered. Postfix accepts only senders in the `minecraft-mail.local` domain (`ALLOWED_SENDER_DOMAINS` in `compose.yml`), so `email.sender` has to be an address such as `herald@minecraft-mail.local`.
 
 #### Reloading the Plugin
 

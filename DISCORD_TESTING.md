@@ -1,6 +1,6 @@
 # Discord Webhook Testing Scripts
 
-This directory contains scripts to test Discord webhook notifications without running a Minecraft server.
+The repository root contains scripts to test Discord webhook notifications without running a Minecraft server.
 
 ## Prerequisites
 
