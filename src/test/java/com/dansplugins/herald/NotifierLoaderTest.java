@@ -11,6 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Properties;
 import java.util.UUID;
 import java.util.logging.Handler;
 import java.util.logging.Level;
@@ -21,6 +22,7 @@ import java.util.stream.Collectors;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -314,6 +316,107 @@ class NotifierLoaderTest {
             assertEquals(1, load(config).size());
 
             assertTrue(logged(Level.WARNING, "'smtp.verify-server-identity' is false"));
+        }
+    }
+
+    /**
+     * That each {@code smtp.*} key reaches the parameter it configures. The notifier's
+     * constructor takes three booleans side by side, so a key wired to its neighbour would
+     * still compile; reading the loaded notifier's session properties back catches it.
+     */
+    @Nested
+    @DisplayName("Email wiring")
+    class EmailWiringTests {
+
+        private Properties sessionPropertiesOf(YamlConfiguration config) {
+            List<Notifier> notifiers = load(config);
+            assertEquals(1, notifiers.size());
+            return assertInstanceOf(EmailNotifier.class, notifiers.get(0)).buildSessionProperties();
+        }
+
+        @Test
+        @DisplayName("smtp.server and smtp.port should reach the session as host and port")
+        void testServerAndPortAreWired() {
+            YamlConfiguration config = emailConfig();
+            config.set("smtp.server", "mail.example.org");
+            config.set("smtp.port", 2525);
+
+            Properties props = sessionPropertiesOf(config);
+
+            assertEquals("mail.example.org", props.getProperty("mail.smtp.host"));
+            assertEquals("2525", props.getProperty("mail.smtp.port"));
+        }
+
+        @Test
+        @DisplayName("Left at their defaults, the encryption keys should require STARTTLS and verify the server")
+        void testEncryptionDefaultsAreWired() {
+            Properties props = sessionPropertiesOf(emailConfig());
+
+            assertEquals("true", props.getProperty("mail.smtp.starttls.enable"));
+            assertEquals("true", props.getProperty("mail.smtp.starttls.required"));
+            assertNull(props.getProperty("mail.smtp.ssl.enable"));
+            assertEquals("true", props.getProperty("mail.smtp.ssl.checkserveridentity"));
+        }
+
+        @Test
+        @DisplayName("smtp.implicit-tls should switch the session to SMTPS instead of STARTTLS")
+        void testImplicitTlsIsWired() {
+            YamlConfiguration config = emailConfig();
+            config.set("smtp.port", 465);
+            config.set("smtp.use-tls", false);
+            config.set("smtp.implicit-tls", true);
+
+            Properties props = sessionPropertiesOf(config);
+
+            assertEquals("true", props.getProperty("mail.smtp.ssl.enable"));
+            assertNull(props.getProperty("mail.smtp.starttls.enable"));
+        }
+
+        @Test
+        @DisplayName("smtp.use-tls false with no implicit TLS should leave the session unencrypted")
+        void testUseTlsOffIsWired() {
+            YamlConfiguration config = emailConfig();
+            config.set("smtp.port", 25);
+            config.set("smtp.use-tls", false);
+
+            Properties props = sessionPropertiesOf(config);
+
+            assertNull(props.getProperty("mail.smtp.starttls.enable"));
+            assertNull(props.getProperty("mail.smtp.ssl.enable"));
+            assertNull(props.getProperty("mail.smtp.ssl.checkserveridentity"));
+        }
+
+        @Test
+        @DisplayName("smtp.verify-server-identity false should turn the certificate name check off")
+        void testVerifyServerIdentityIsWired() {
+            YamlConfiguration config = emailConfig();
+            config.set("smtp.verify-server-identity", false);
+
+            assertEquals("false", sessionPropertiesOf(config).getProperty("mail.smtp.ssl.checkserveridentity"));
+        }
+
+        @Test
+        @DisplayName("smtp.username should turn SMTP authentication on, and its absence leave it off")
+        void testUsernameIsWiredToAuthentication() {
+            assertEquals("false", sessionPropertiesOf(emailConfig()).getProperty("mail.smtp.auth"));
+
+            YamlConfiguration config = emailConfig();
+            config.set("smtp.username", "user@example.com");
+            config.set("smtp.password", "secret");
+
+            assertEquals("true", sessionPropertiesOf(config).getProperty("mail.smtp.auth"));
+        }
+
+        @Test
+        @DisplayName("An smtp.port outside 1-65535 should skip email and name the key")
+        void testOutOfRangePortIsReported() {
+            YamlConfiguration config = emailConfig();
+            config.set("smtp.port", 70000);
+
+            assertTrue(load(config).isEmpty());
+
+            assertTrue(logged(Level.WARNING, "Email configuration is incomplete: "));
+            assertTrue(logged(Level.WARNING, "'smtp.port' must be between 1 and 65535"));
         }
     }
 
