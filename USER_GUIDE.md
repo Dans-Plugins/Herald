@@ -104,6 +104,11 @@ Some email failures are worth recognising by sight:
 - A failure mentioning a connect timeout means no connection to `smtp.server` on `smtp.port` could be established within ten seconds — usually a wrong host or port, or a firewall dropping the packets.
 - A failure mentioning a read timeout means the connection was established but the server stopped answering, and Herald gave up after thirty seconds rather than waiting indefinitely. Either way the failure is reported, instead of the notification silently holding a task for every join.
 
+Discord failures that mention a timeout mean the same two things, on shorter bounds:
+
+- A failure mentioning a connect timeout means no connection to the host in `discord.webhook-url` could be established within five seconds — usually a firewall dropping the server's outbound traffic.
+- A failure mentioning a read timeout means the connection was established but no answer came back within ten seconds. Unlike a rate limit, neither timeout is retried, so the message for that join is not sent.
+
 One Discord failure is reported as a warning rather than an error, because it clears on its own:
 
 - `Discord rate-limited a join notification; retrying in ...` — Discord asked Herald to slow down, which happens when several players join within the same couple of seconds. Herald waits for as long as Discord asked and sends the message again, so nothing is lost and no action is needed. If the retry is rate-limited too, or Discord asks for a wait longer than ten seconds, that is reported as a failure instead and the message is not sent.
