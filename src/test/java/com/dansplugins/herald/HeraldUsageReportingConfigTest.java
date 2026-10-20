@@ -55,4 +55,19 @@ class HeraldUsageReportingConfigTest {
     void aConfigurationWithoutDefaultsIsLeftAlone() {
         assertFalse(Herald.ensureUsageReportingBlockOnDisk(new YamlConfiguration()));
     }
+
+    @Test
+    void theNoticeNamesTheConfiguredEndpoint() {
+        String notice = Herald.usageReportingNotice("Herald", "https://trace.example.org");
+
+        assertTrue(notice.contains("sends its name and version to https://trace.example.org,"), notice);
+        assertFalse(notice.contains("trace.danielstephenson.dev"), "the bundled default must not be named: " + notice);
+    }
+
+    @Test
+    void theNoticeNamesTheBundledEndpointWhenItIsUnchanged() {
+        String bundled = bundledDefaults().getString("usage-reporting.endpoint");
+
+        assertTrue(Herald.usageReportingNotice("Herald", bundled).contains(" to " + bundled + ","));
+    }
 }
