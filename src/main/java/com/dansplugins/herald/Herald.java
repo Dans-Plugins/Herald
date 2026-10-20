@@ -43,18 +43,15 @@ public final class Herald extends JavaPlugin implements Listener {
         if (ensureUsageReportingBlockOnDisk(getConfig())) {
             saveConfig();
         }
-        trace = TraceClient.builder(getUsageReportingEndpoint(), getName(), getDescription().getVersion())
+        String endpoint = getUsageReportingEndpoint();
+        trace = TraceClient.builder(endpoint, getName(), getDescription().getVersion())
                 .key(getUsageReportingKey())
                 .enabled(isUsageReportingEnabled())
                 .serverWideConfig(getDataFolder().getParentFile())
                 .logger(getLogger())
                 .build();
         if (trace.isEnabled()) {
-            getLogger().info("Usage reporting is on: " + getName() + " sends its name and version to"
-                    + " https://trace.danielstephenson.dev, plus a random server ID (server-id in plugins/trace/config.yml) - nothing about players. Turn it off with"
-                    + " usage-reporting.enabled: false in this plugin's config.yml, or for every plugin with"
-                    + " enabled: false in plugins/trace/config.yml."
-                    + " Details: https://danielstephenson.dev/usage-reporting");
+            getLogger().info(usageReportingNotice(getName(), endpoint));
         } else {
             getLogger().info("Usage reporting is off (" + trace.disabledReason() + ").");
         }
@@ -92,6 +89,19 @@ public final class Herald extends JavaPlugin implements Listener {
             config.set(key, defaults.get(key));
         }
         return true;
+    }
+
+    /**
+     * The startup notice logged while usage reporting is on. It names {@code endpoint}, the
+     * server the client was built with, so that a changed {@code usage-reporting.endpoint}
+     * is what the console reports rather than the bundled default.
+     */
+    static String usageReportingNotice(String pluginName, String endpoint) {
+        return "Usage reporting is on: " + pluginName + " sends its name and version to"
+                + " " + endpoint + ", plus a random server ID (server-id in plugins/trace/config.yml) - nothing about players. Turn it off with"
+                + " usage-reporting.enabled: false in this plugin's config.yml, or for every plugin with"
+                + " enabled: false in plugins/trace/config.yml."
+                + " Details: https://danielstephenson.dev/usage-reporting";
     }
 
     // The one-argument getters, deliberately. Bukkit registers the jar's config.yml
