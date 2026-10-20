@@ -13,7 +13,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * How the {@code usage-reporting} block reaches a config.yml that predates it. A real
  * {@link YamlConfiguration} is used because the point is that {@code isSet} answers for the
- * file alone while the bundled defaults are registered on it.
+ * file alone while the bundled defaults are registered on it. Also which server the startup
+ * notice names once reporting is on.
  */
 class HeraldUsageReportingConfigTest {
 
