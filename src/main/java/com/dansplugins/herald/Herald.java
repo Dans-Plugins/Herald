@@ -11,6 +11,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public final class Herald extends JavaPlugin implements Listener {
 
@@ -141,17 +142,25 @@ public final class Herald extends JavaPlugin implements Listener {
     public void onPlayerJoin(PlayerJoinEvent event) {
         String playerName = event.getPlayer().getName();
 
-        getServer().getScheduler().runTaskAsynchronously(this, () -> {
-            for (Notifier notifier : notifiers) {
-                try {
-                    notifier.notifyPlayerJoin(playerName, serverName);
-                    getLogger().info("Notification sent successfully for player: " + playerName
-                            + " via " + notifier.getDisplayName());
-                } catch (Exception e) {
-                    getLogger().log(Level.SEVERE, "Failed to send notification via "
-                            + notifier.getDisplayName() + ": " + e.getMessage(), e);
-                }
+        getServer().getScheduler().runTaskAsynchronously(this,
+                () -> notifyPlayerJoin(notifiers, playerName, serverName, getLogger()));
+    }
+
+    /**
+     * Sends one join notification through every notifier in turn. Each send has its own
+     * try/catch, so a channel that fails is logged and the remaining channels are still
+     * tried -- this is what keeps Discord and email independent at send time.
+     */
+    static void notifyPlayerJoin(List<Notifier> notifiers, String playerName, String serverName, Logger logger) {
+        for (Notifier notifier : notifiers) {
+            try {
+                notifier.notifyPlayerJoin(playerName, serverName);
+                logger.info("Notification sent successfully for player: " + playerName
+                        + " via " + notifier.getDisplayName());
+            } catch (Exception e) {
+                logger.log(Level.SEVERE, "Failed to send notification via "
+                        + notifier.getDisplayName() + ": " + e.getMessage(), e);
             }
-        });
+        }
     }
 }
