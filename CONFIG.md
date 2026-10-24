@@ -35,7 +35,7 @@ discord:
 
 **Type:** string
 **Default:** `""`
-**Description:** The Discord webhook URL for the channel where join notifications should be sent. Required when `discord.enabled` is `true`. Must be a syntactically valid `http` or `https` URL — a value with the scheme left off, such as `discord.com/api/webhooks/123456/abcdef`, is rejected. If the URL is missing or unusable, Herald logs a warning naming the problem at startup and skips Discord notifications.
+**Description:** The Discord webhook URL for the channel where join notifications should be sent. Required when `discord.enabled` is `true`. Must be a syntactically valid `http` or `https` URL — a value with the scheme left off, such as `discord.com/api/webhooks/123456/abcdef`, is rejected. It must also name a host, so a URL with a slash too many or too few after the scheme, such as `https:///api/webhooks/123456/abcdef`, is rejected, and any port it gives must be between `1` and `65535`. If the URL is missing or unusable, Herald logs a warning naming the problem at startup and skips Discord notifications.
 
 **Example:**
 

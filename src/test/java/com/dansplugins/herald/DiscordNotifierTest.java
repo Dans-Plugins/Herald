@@ -944,6 +944,55 @@ class DiscordNotifierTest {
                     "Problem should explain the scheme requirement: " + problems.get(0));
         }
 
+        @ParameterizedTest
+        @ValueSource(strings = {
+                "https:///api/webhooks/123/abc",
+                "https:/api/webhooks/123/abc",
+                "https:api/webhooks/123/abc",
+                "https://:443/api/webhooks/123/abc"
+        })
+        @DisplayName("validateConfiguration should report a webhook URL that names no host")
+        void testValidateConfigurationWithNoHost(String webhookUrl) {
+            List<String> problems = DiscordNotifier.validateConfiguration(webhookUrl);
+
+            assertEquals(1, problems.size(), "Expected exactly one problem, got: " + problems);
+            assertTrue(problems.get(0).contains("discord.webhook-url"),
+                    "Problem should name the config key: " + problems.get(0));
+            assertTrue(problems.get(0).contains("has no host"),
+                    "Problem should explain the host is missing: " + problems.get(0));
+            assertFalse(problems.get(0).contains("abc"),
+                    "Problem must not repeat the webhook token into the log: " + problems.get(0));
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {
+                "https://discord.com:0/api/webhooks/123/abc",
+                "https://discord.com:65536/api/webhooks/123/abc",
+                "https://discord.com:99999/api/webhooks/123/abc"
+        })
+        @DisplayName("validateConfiguration should report a webhook URL whose port is out of range")
+        void testValidateConfigurationWithPortOutOfRange(String webhookUrl) {
+            List<String> problems = DiscordNotifier.validateConfiguration(webhookUrl);
+
+            assertEquals(1, problems.size(), "Expected exactly one problem, got: " + problems);
+            assertTrue(problems.get(0).contains("discord.webhook-url"),
+                    "Problem should name the config key: " + problems.get(0));
+            assertTrue(problems.get(0).contains("between 1 and 65535"),
+                    "Problem should state the valid port range: " + problems.get(0));
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {
+                "https://discord.com:443/api/webhooks/123/abc",
+                "http://127.0.0.1:65535/webhook",
+                "http://mock_discord:8080/webhook"
+        })
+        @DisplayName("validateConfiguration should accept a host with an in-range port, or one holding an underscore")
+        void testValidateConfigurationWithHostAndPort(String webhookUrl) {
+            assertTrue(DiscordNotifier.validateConfiguration(webhookUrl).isEmpty(),
+                    "Expected no problems for " + webhookUrl);
+        }
+
         @Test
         @DisplayName("validateConfiguration should accept an uppercase scheme")
         void testValidateConfigurationWithUppercaseScheme() {

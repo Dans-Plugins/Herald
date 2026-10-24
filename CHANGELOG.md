@@ -15,6 +15,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- A `discord.webhook-url` that names no host, such as `https:///api/webhooks/...` with a slash too many, or one whose port is outside `1`–`65535`, is now reported at startup and Discord notifications are skipped, as for any other unusable URL. Both used to pass the startup check, so `Discord notifications enabled` was logged and every player join then failed instead: the first as `Failed to select a proxy`, which does not point at the webhook URL, and the second as `port out of range`.
+
 - The usage-reporting startup notice now names the server set in `usage-reporting.endpoint`, which is where events are actually sent. It used to name `https://trace.danielstephenson.dev` whatever the key held, so a server pointed elsewhere was told the wrong destination.
 
 - Herald is now compiled for Java 17 instead of Java 21, so it loads on Minecraft 1.19.4, whose servers run on Java 17–20 and refused the plugin with an `UnsupportedClassVersionError`. The supported versions — 1.19.4, 1.21.11 and 26.2 at the time; 26.3 was added later — are declared in `minecraft-versions.json` and listed in the README, and the CI `Build` workflow checks that the plugin uses only Bukkit API present on all of them and bytecode each of them can load.

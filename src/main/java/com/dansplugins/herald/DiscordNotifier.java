@@ -167,9 +167,10 @@ public class DiscordNotifier implements Notifier {
         }
 
         URI uri;
+        URL url;
         try {
             uri = URI.create(webhookUrl);
-            uri.toURL();
+            url = uri.toURL();
         } catch (IllegalArgumentException | MalformedURLException e) {
             problems.add("'discord.webhook-url' is not a valid URL: " + describeUrlProblem(e));
             return problems;
@@ -178,6 +179,23 @@ public class DiscordNotifier implements Notifier {
         String scheme = uri.getScheme();
         if (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme)) {
             problems.add("'discord.webhook-url' must use http or https, but uses '" + scheme + "'");
+            return problems;
+        }
+
+        // Both of these parse, so without the checks below they would pass startup and
+        // fail on every join instead: a URL with no host as "Failed to select a proxy",
+        // which does not point at the webhook URL at all, and a port out of range as an
+        // IllegalArgumentException from openConnection(). The URL's host and port are read
+        // rather than the URI's because they are what sendMessage() connects to, and the URI
+        // reports no host at all for a name holding an underscore. A port of -1 means none
+        // was given.
+        String host = url.getHost();
+        if (host == null || host.isEmpty()) {
+            problems.add("'discord.webhook-url' has no host; it should look like https://discord.com/api/webhooks/...");
+        }
+        int port = url.getPort();
+        if (port != -1 && (port < 1 || port > 65535)) {
+            problems.add("'discord.webhook-url' has port " + port + ", but a port must be between 1 and 65535");
         }
         return problems;
     }
