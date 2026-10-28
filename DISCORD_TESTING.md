@@ -129,7 +129,7 @@ Test failed!
 
 ### "Error code: 429"
 - You're being rate-limited by Discord
-- Wait a few seconds and try again
+- Wait a few seconds and try again. The scripts send once and do not retry; the plugin itself waits out a rate limit and retries (see [Integration with Herald Plugin](#integration-with-herald-plugin))
 
 ### No Message Appears in Discord
 - Check that you're looking at the correct channel
@@ -150,4 +150,11 @@ discord:
   webhook-url: "https://discord.com/api/webhooks/123456/abcdef"
 ```
 
-The plugin uses the same webhook delivery mechanism as these test scripts, but sends a randomly-selected, medieval-themed join message instead of the scripts' fixed test string. See `discord.join-messages` in the [Configuration Guide](CONFIG.md) to customize those messages.
+The plugin sends the same kind of request as these test scripts, an HTTP POST of a JSON body holding a single `content` field, but sends a randomly-selected, medieval-themed join message instead of the scripts' fixed test string. See `discord.join-messages` in the [Configuration Guide](CONFIG.md) to customize those messages.
+
+A successful script run shows that the URL reaches a working webhook. It does not reproduce everything the plugin does around the request:
+
+- **Startup check.** The plugin checks `discord.webhook-url` when the server starts and skips Discord notifications if the URL is not an `http`/`https` URL, names no host, or gives a port outside `1`–`65535`. The scripts do no such check and only find out when the request is sent.
+- **Rate limits.** When Discord answers `429`, the plugin waits as long as Discord asked and sends the message once more, provided the wait is no longer than ten seconds; a longer wait, or a second `429`, is logged as a failure. The scripts report `429` as a failure straight away.
+- **Timeouts.** The plugin gives up after five seconds without a connection or ten seconds without an answer. The Bash script allows ten and fifteen seconds, and the Python script ten seconds for each, so a slow network can pass the script and still time out in the plugin.
+- **Error detail.** The plugin's failure message includes any error body Discord returned alongside the status code. The scripts print the status code only.
