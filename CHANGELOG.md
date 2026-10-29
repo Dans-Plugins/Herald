@@ -6,26 +6,50 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [2.3.0] – 2026-10-28
+
 ### Changed
 
-- The usage-reporting "Details" link (startup notice, `config.yml` and the docs) now points at https://danielstephenson.dev/usage-reporting, a public page; the previous link led to a private repository and returned 404 for everyone. The vendored trace client is now 0.6.1, which carries the same link in the `plugins/trace/config.yml` header it writes. Details: https://github.com/Stephenson-Software/trace-client-java/releases/tag/0.6.1.
-- Minecraft 26.3 is now a supported version, added to `minecraft-versions.json` alongside 1.19.4, 1.21.11 and 26.2, so every stable release is booted on a 26.3 server before it is published and the CI `Build` workflow checks the plugin against the 26.3 Bukkit API.
-- The vendored trace client is now 0.5.0, which adds a random server ID to every usage event. The first time reporting is enabled, a `server-id: <random UUID>` line is appended to `plugins/trace/config.yml`, and every event carries that value as the tag `install`, so servers can be counted rather than events. The ID identifies no person, account or IP address, deleting the line gets a new one, and a disabled client never creates one; every existing opt-out stops it. The startup notice now mentions it.
-- The vendored trace client is now 0.4.0, which tags every usage event with the plugin version. Herald sends only `startup`, which already carried it, so what is sent is unchanged.
+- The vendored trace client is now 0.7.0, which coalesces repeated events: identical reports within 60 seconds of the first are counted and sent as one event tagged `coalesced` with the count, so no plugin can flood the trace server by reporting the same event in a loop. `startup` is never coalesced or held back, and it is the only event Herald sends, so what is sent is unchanged. Details: https://github.com/Stephenson-Software/trace-client-java/releases/tag/0.7.0.
+
+## [2.2.2] – 2026-10-24
 
 ### Fixed
 
 - A `discord.webhook-url` that names no host, such as `https:///api/webhooks/...` with a slash too many, or one whose port is outside `1`–`65535`, is now reported at startup and Discord notifications are skipped, as for any other unusable URL. Both used to pass the startup check, so `Discord notifications enabled` was logged and every player join then failed instead: the first as `Failed to select a proxy`, which does not point at the webhook URL, and the second as `port out of range`.
-
 - The usage-reporting startup notice now names the server set in `usage-reporting.endpoint`, which is where events are actually sent. It used to name `https://trace.danielstephenson.dev` whatever the key held, so a server pointed elsewhere was told the wrong destination.
+- `up.sh` and `down.sh` are now executable and start with a `#!/usr/bin/env bash` line, so `./up.sh` and `./down.sh` run on a fresh clone as the README and `CONTRIBUTING.md` describe. Both were tracked without the executable bit, so each failed with `Permission denied`, and `up.sh` hit the same error on its own first line, `./down.sh`. The scripts are not exercised by CI; the change was checked by reading the modes `git ls-files -s` reports.
+
+## [2.2.1] – 2026-10-06
+
+### Changed
+
+- The usage-reporting "Details" link (startup notice, `config.yml` and the docs) now points at https://danielstephenson.dev/usage-reporting, a public page; the previous link led to a private repository and returned 404 for everyone. The vendored trace client is now 0.6.1, which carries the same link in the `plugins/trace/config.yml` header it writes. Details: https://github.com/Stephenson-Software/trace-client-java/releases/tag/0.6.1.
+
+## [2.2.0] – 2026-10-05
+
+### Changed
+
+- Minecraft 26.3 is now a supported version, added to `minecraft-versions.json` alongside 1.19.4, 1.21.11 and 26.2, so every stable release is booted on a 26.3 server before it is published and the CI `Build` workflow checks the plugin against the 26.3 Bukkit API.
+- The vendored trace client is now 0.5.0, which adds a random server ID to every usage event. The first time reporting is enabled, a `server-id: <random UUID>` line is appended to `plugins/trace/config.yml`, and every event carries that value as the tag `install`, so servers can be counted rather than events. The ID identifies no person, account or IP address, deleting the line gets a new one, and a disabled client never creates one; every existing opt-out stops it. The startup notice now mentions it.
+
+## [2.1.0] – 2026-10-01
+
+### Added
+
+- Bug report and feature request issue templates under `.github/ISSUE_TEMPLATE/`, a `CODEOWNERS` file, and a "Commit and Pull Request Conventions" section in `CONTRIBUTING.md` documenting the branch prefixes and commit-message style already in use, `Closes #N` linking, and the squash-merge strategy every pull request since #47 has followed. The README installation step now links to the releases page.
+
+### Changed
+
+- The vendored trace client is now 0.4.0, which tags every usage event with the plugin version. Herald sends only `startup`, which already carried it, so what is sent is unchanged.
+- The vendored trace client is now 0.3.0. `plugins/trace/config.yml` can now carry a `tags:` block whose entries are added to every usage event the plugin sends, so a test server can mark its own events (the release gates write `ci: "true"`) and be left out of the figures for real installations. Nothing changes for a server whose `plugins/trace/config.yml` has no `tags:` block.
+
+### Fixed
 
 - Herald is now compiled for Java 17 instead of Java 21, so it loads on Minecraft 1.19.4, whose servers run on Java 17–20 and refused the plugin with an `UnsupportedClassVersionError`. The supported versions — 1.19.4, 1.21.11 and 26.2 at the time; 26.3 was added later — are declared in `minecraft-versions.json` and listed in the README, and the CI `Build` workflow checks that the plugin uses only Bukkit API present on all of them and bytecode each of them can load.
-
 - `reload-plugin.sh` now restarts the Docker test server after copying in the new JAR, instead of asking `rcon-cli` to run a ServerUtils reload. Neither `rcon-cli` nor ServerUtils is installed in the test container and RCON is not enabled, so the script used to copy the JAR in and then exit with an error without reloading anything, leaving a second `Herald.jar` beside the original that could load the plugin twice on the next start. The script now also removes any Herald JAR already in `plugins/` before copying, so a version bump does not leave two copies either. The script is not exercised by CI; it was checked by reading it against `.testcontainer/post-create.sh`.
 
-- The `Dev Release` workflow now retries publishing the `dev` prerelease before giving up. The release and its tag have to be deleted and recreated for the tag to move to the new commit, and a transient API failure inside that window previously left the repository with no `dev` release at all until the workflow was re-run by hand. Each attempt now starts from a clean slate, and an exhausted retry fails loudly.
-
-- `up.sh` and `down.sh` are now executable and start with a `#!/usr/bin/env bash` line, so `./up.sh` and `./down.sh` run on a fresh clone as the README and `CONTRIBUTING.md` describe. Both were tracked without the executable bit, so each failed with `Permission denied`, and `up.sh` hit the same error on its own first line, `./down.sh`. The scripts are not exercised by CI; the change was checked by reading the modes `git ls-files -s` reports.
+## [2.0.0] – 2026-09-19
 
 ### Added
 
@@ -34,7 +58,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `smtp.implicit-tls` config option, which encrypts the connection to the SMTP server before the first SMTP command instead of upgrading a plain one with STARTTLS. This is what port `465` — SMTPS — expects, and what several hosted mail providers publish as their primary submission port; neither setting of `smtp.use-tls` could reach such a server before, since one sent `EHLO` in the clear to a port that would not read it and the other sent everything in the clear. It defaults to `false`, so an existing configuration keeps using STARTTLS on the port it was set up against. It is an alternative to `smtp.use-tls` rather than an addition to it: setting both to `true` is reported at startup and email notifications are skipped, rather than one mode being picked silently.
 - `smtp.verify-server-identity` config option, which controls whether the certificate the SMTP server presents is checked against the address in `smtp.server`. It defaults to `true`, and Herald now sets `mail.smtp.ssl.checkserveridentity` explicitly in both directions whenever `smtp.use-tls` or `smtp.implicit-tls` is on. The pinned `com.sun.mail:jakarta.mail:2.0.1` leaves that check off unless it is asked for and later versions of the library default it the other way, so until now whether the encrypted connection reached the host that was configured was decided by the dependency version rather than by Herald, in the direction of not checking. An installation whose relay presents a certificate that cannot name the address it is dialled at — by IP address, or under another hostname — will start failing its sends after this change with a certificate error in the log, and must set `smtp.verify-server-identity` to `false` to keep sending; doing so is reported at startup, since the connection then stays encrypted without establishing who answered it.
 - A startup warning when `smtp.port` and the encryption mode disagree on either of the two conventional ports — `465` without `smtp.implicit-tls`, or `smtp.implicit-tls` on `587`. Both combinations fail at the protocol level on the first player join, which reads as an unrecognised command or a handshake error rather than as a configuration mistake. It stays a warning rather than a refusal, since a relay may offer either mode on any port.
-- Bug report and feature request issue templates under `.github/ISSUE_TEMPLATE/`, a `CODEOWNERS` file, and a "Commit and Pull Request Conventions" section in `CONTRIBUTING.md` documenting the branch prefixes and commit-message style already in use, `Closes #N` linking, and the squash-merge strategy every pull request since #47 has followed. The README installation step now links to the releases page.
 - A `Dev Release` workflow, which republishes a rolling `dev` prerelease of `main` on every non-documentation push. This is what Dan's Plugin Manager's experimental channel installs from: `/dpm get herald --experimental` reads `releases/tags/dev`, so without it there is nothing for that command to download. The prerelease is unreleased, unreviewed code and is marked as such.
 
 ### Changed
@@ -43,7 +66,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `smtp.use-tls: true` now requires STARTTLS instead of merely offering to use it. Only `mail.smtp.starttls.enable` was set before, which Jakarta Mail treats as advisory: a server that did not advertise STARTTLS was talked to in the clear, credentials included, while `smtp.use-tls: true` sat in the config file. `mail.smtp.starttls.required` is now set alongside it, so such a server fails the send and is reported. An installation pointed at a relay with no STARTTLS support must set `smtp.use-tls` to `false` to keep sending, which is reported at startup when `smtp.username` is also set, since the credentials then travel unencrypted.
 - The SMTP session is now built with connect, read and write timeouts (10, 30 and 30 seconds). All three default to infinite in Jakarta Mail, so a mail server that accepted a connection and then stopped answering used to park the sending task for as long as the socket stayed open, holding one task per join and logging nothing. The failure is now reported the way any other send failure is, matching the bounds the Discord side has always had.
 - A Discord webhook message that is rate-limited (HTTP 429) is now waited out and sent again once, instead of being discarded and reported as a failure. The wait is taken from the `Retry-After` header, falling back to the `retry_after` field of the response body and then to one second, and is capped at ten seconds so that one pathological value cannot park the sending task; a wait longer than the cap, or a second rate limit, is reported as a failure the way it was before. The retry itself is reported as a warning naming how long it waits, rather than as the `SEVERE` line a transient, self-correcting condition used to produce.
-- The vendored trace client is now 0.3.0. `plugins/trace/config.yml` can now carry a `tags:` block whose entries are added to every usage event the plugin sends, so a test server can mark its own events (the release gates write `ci: "true"`) and be left out of the figures for real installations. Nothing changes for a server whose `plugins/trace/config.yml` has no `tags:` block.
+
+### Fixed
+
+- The `Dev Release` workflow now retries publishing the `dev` prerelease before giving up. The release and its tag have to be deleted and recreated for the tag to move to the new commit, and a transient API failure inside that window previously left the repository with no `dev` release at all until the workflow was re-run by hand. Each attempt now starts from a clean slate, and an exhausted retry fails loudly.
 
 ## [2.0.0-SNAPSHOT-8-8-2026] – 2026-08-08
 
@@ -86,6 +112,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Docker Compose setup for local mail-server testing
 - Discord webhook test scripts (Bash and Python)
 
-[Unreleased]: https://github.com/Dans-Plugins/Herald/compare/2.0.0-SNAPSHOT-8-8-2026...HEAD
+[Unreleased]: https://github.com/Dans-Plugins/Herald/compare/v2.3.0...HEAD
+[2.3.0]: https://github.com/Dans-Plugins/Herald/releases/tag/v2.3.0
+[2.2.2]: https://github.com/Dans-Plugins/Herald/releases/tag/v2.2.2
+[2.2.1]: https://github.com/Dans-Plugins/Herald/releases/tag/v2.2.1
+[2.2.0]: https://github.com/Dans-Plugins/Herald/releases/tag/v2.2.0
+[2.1.0]: https://github.com/Dans-Plugins/Herald/releases/tag/v2.1.0
+[2.0.0]: https://github.com/Dans-Plugins/Herald/releases/tag/v2.0.0
 [2.0.0-SNAPSHOT-8-8-2026]: https://github.com/Dans-Plugins/Herald/releases/tag/2.0.0-SNAPSHOT-8-8-2026
 [1.0.0]: https://github.com/Dans-Plugins/Herald/releases/tag/1.0.0
