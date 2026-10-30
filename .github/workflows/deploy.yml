@@ -49,7 +49,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Build plugin JAR
-        run: gradle build
+        run: ./gradlew build
 
       - name: Locate built JAR
         id: locate-jar
