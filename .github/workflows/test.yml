@@ -2,8 +2,11 @@ name: Run Tests
 
 on:
   push:
-    branches: ['main', 'master', 'dev']
+    branches: ['main']
   pull_request:
+
+permissions:
+  contents: read
 
 jobs:
   test:

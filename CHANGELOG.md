@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- The `Run Tests` workflow now declares `permissions: contents: read`, as `Build` and `Deploy Plugin to omcsi` already do, instead of running with the repository's default token permissions. `Run Tests` and `Build` no longer list the `master`, `dev` and `develop` branches in their triggers, since none of them exists, and `Deploy Plugin to omcsi` builds with the committed Gradle wrapper (`./gradlew build`) rather than whatever `gradle` is installed on the runner, matching the other workflows.
+
 ## [2.3.0] – 2026-10-28
 
 ### Changed
