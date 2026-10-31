@@ -70,7 +70,7 @@ A Docker-based test server is available for development.
 
 1. Copy `sample.env` to `.env` and configure as needed. Leave `MINECRAFT_VERSION` at `1.21.4`: the `Dockerfile` builds only that Spigot version (`BuildTools.jar --rev 1.21.4`), and the Minecraft server in the container fails to start if `.env` names any other.
 2. Build the plugin: `./gradlew build`. The image copies the JAR from `build/libs` rather than building it.
-3. Start the test server: `./up.sh`. This stops any running test stack first, then rebuilds and starts it.
+3. Start the test server: `./up.sh`. This stops any running test stack first, creates the `testmcserver` directory if it is missing, then rebuilds and starts it. The server's files, world included, are kept in `testmcserver`, which `compose.yml` bind-mounts into the container and `.gitignore` excludes; running `docker compose up` directly on a fresh clone fails until that directory exists.
 
 The stack also starts a Postfix mail server (`mailserver`, on ports `25` and `587`) that relays everything to MailHog, so emails Herald sends can be read in MailHog's web interface at http://localhost:8025 instead of being delivered. Postfix accepts only senders in the `minecraft-mail.local` domain (`ALLOWED_SENDER_DOMAINS` in `compose.yml`), so `email.sender` has to be an address such as `herald@minecraft-mail.local`.
 

@@ -118,3 +118,6 @@ run/
 .gradle/
 build/
 !gradle/wrapper/gradle-wrapper.jar
+
+# Docker test server data (bind-mounted by compose.yml, created by up.sh)
+testmcserver/
