@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- `./up.sh` now creates the `testmcserver` directory before starting the Docker test server, so it works on a fresh clone. `compose.yml` bind-mounts that directory with the long volume syntax, which does not create a missing host path, so the stack used to stop with a `bind source path does not exist` error until the directory was made by hand. `testmcserver/` is now also in `.gitignore`, so the server's files no longer show up as untracked. The script is not exercised by CI; the change was checked by reading `compose.yml` against the Compose specification.
+
 ### Changed
 
 - The `Run Tests` workflow now declares `permissions: contents: read`, as `Build` and `Deploy Plugin to omcsi` already do, instead of running with the repository's default token permissions. `Run Tests` and `Build` no longer list the `master`, `dev` and `develop` branches in their triggers, since none of them exists, and `Deploy Plugin to omcsi` builds with the committed Gradle wrapper (`./gradlew build`) rather than whatever `gradle` is installed on the runner, matching the other workflows.
