@@ -256,6 +256,8 @@ email:
 **Default:** `"{player} joined {server} server"`
 **Description:** The subject line of notification emails. Supports the `{player}`, `{server}` and `{time}` placeholders. `{time}` is replaced with the time the player joined, in the server's default time zone, e.g. `Sat Aug 01 21:48:45 UTC 2026`. The day and month names are always in English, whatever the server's locale. The format itself is not configurable. If the key is absent or empty, Herald falls back to the built-in default.
 
+The subject and body are sent as UTF-8 whatever the server's default charset is, so accented letters and emoji arrive intact.
+
 **Example:**
 
 ```yaml

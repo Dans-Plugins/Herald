@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Email subjects and bodies are now always sent as UTF-8. They used to be sent in the JVM's default charset, so on a server whose default is not UTF-8, which is possible on the Java 17 that 1.19.4 servers run on, a character that charset lacks arrived as `?`: an emoji in `email.subject` or `email.body` on a Windows host, for example, or in a `server-name` filling `{server}`.
 - `./up.sh` now creates the `testmcserver` directory before starting the Docker test server, so it works on a fresh clone. `compose.yml` bind-mounts that directory with the long volume syntax, which does not create a missing host path, so the stack used to stop with a `bind source path does not exist` error until the directory was made by hand. `testmcserver/` is now also in `.gitignore`, so the server's files no longer show up as untracked. The script is not exercised by CI; the change was checked by reading `compose.yml` against the Compose specification.
 
 ### Changed
