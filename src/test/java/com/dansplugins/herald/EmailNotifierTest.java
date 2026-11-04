@@ -1,9 +1,11 @@
 package com.dansplugins.herald;
 
+import jakarta.mail.Message;
 import jakarta.mail.MessagingException;
 import jakarta.mail.Session;
 import jakarta.mail.Transport;
 import jakarta.mail.internet.AddressException;
+import jakarta.mail.internet.MimeMessage;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -12,8 +14,12 @@ import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.net.InetAddress;
 import java.net.ServerSocket;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -737,6 +743,85 @@ class EmailNotifierTest {
                 assertTrue(elapsedMillis < 10000,
                         "The timeout should have fired promptly, but the attempt took " + elapsedMillis + "ms");
             }
+        }
+    }
+
+    /** Holds a Latin-1 letter and an emoji, the latter missing from ISO-8859-1 and windows-1252. */
+    private static final String NON_ASCII_SUBJECT = "⚔️ Château: {player} joined";
+    private static final String NON_ASCII_BODY = "🏰 Bienvenue à Château";
+
+    /**
+     * Writes a message out and reads it back as a mail client would, so what is compared
+     * is what crosses the wire, not what the message object was handed.
+     */
+    private static MimeMessage overTheWire(MimeMessage message) throws Exception {
+        message.saveChanges();
+        ByteArrayOutputStream wire = new ByteArrayOutputStream();
+        message.writeTo(wire);
+        return new MimeMessage(Session.getInstance(new Properties()),
+                new ByteArrayInputStream(wire.toByteArray()));
+    }
+
+    private static MimeMessage nonAsciiMessage() throws Exception {
+        EmailNotifier notifier = new EmailNotifier("smtp.example.com", 587, null, null,
+                "sender@example.com", true, Arrays.asList("a@example.com", "b@example.com"));
+        return notifier.buildMessage(Session.getInstance(new Properties()), NON_ASCII_SUBJECT, NON_ASCII_BODY);
+    }
+
+    /**
+     * Run in a JVM of its own by {@link MessageContentTests}: the mail library reads its
+     * default charset once and caches it, so the test JVM's default cannot be changed.
+     */
+    static final class NonUtf8DefaultProbe {
+
+        public static void main(String[] args) throws Exception {
+            MimeMessage received = overTheWire(nonAsciiMessage());
+            if (!NON_ASCII_SUBJECT.equals(received.getSubject())) {
+                throw new AssertionError("Subject arrived as: " + received.getSubject());
+            }
+            if (!NON_ASCII_BODY.equals(received.getContent())) {
+                throw new AssertionError("Body arrived as: " + received.getContent());
+            }
+        }
+    }
+
+    @Nested
+    @DisplayName("Message Content Tests")
+    class MessageContentTests {
+
+        @Test
+        @DisplayName("The message should carry the sender and every configured recipient")
+        void testAddressing() throws Exception {
+            MimeMessage message = nonAsciiMessage();
+
+            assertEquals("sender@example.com", message.getFrom()[0].toString());
+            assertEquals(2, message.getRecipients(Message.RecipientType.TO).length);
+            assertEquals("a@example.com", message.getRecipients(Message.RecipientType.TO)[0].toString());
+            assertEquals("b@example.com", message.getRecipients(Message.RecipientType.TO)[1].toString());
+        }
+
+        @Test
+        @DisplayName("Non-ASCII subject and body should arrive intact")
+        void testNonAsciiArrivesIntact() throws Exception {
+            MimeMessage received = overTheWire(nonAsciiMessage());
+
+            assertEquals(NON_ASCII_SUBJECT, received.getSubject());
+            assertEquals(NON_ASCII_BODY, received.getContent());
+        }
+
+        @Test
+        @DisplayName("Non-ASCII subject and body should arrive intact on a JVM whose default charset is not UTF-8")
+        void testNonAsciiArrivesIntactWithoutUtf8Default() throws Exception {
+            Process probe = new ProcessBuilder(
+                    Path.of(System.getProperty("java.home"), "bin", "java").toString(),
+                    "-Dmail.mime.charset=ISO-8859-1",
+                    "-cp", System.getProperty("java.class.path"),
+                    NonUtf8DefaultProbe.class.getName())
+                    .redirectErrorStream(true)
+                    .start();
+            String output = new String(probe.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+
+            assertEquals(0, probe.waitFor(), output);
         }
     }
 

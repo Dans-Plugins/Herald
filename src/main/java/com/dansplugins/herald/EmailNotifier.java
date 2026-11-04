@@ -5,6 +5,7 @@ import jakarta.mail.internet.AddressException;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
@@ -42,6 +43,13 @@ public class EmailNotifier implements Notifier {
 
     /** The submission port STARTTLS is conventionally offered on. */
     static final int STARTTLS_PORT = 587;
+
+    /**
+     * Charset of the subject and body. Named explicitly because the mail library
+     * otherwise uses the JVM's default, which on Java 17 is whatever the host's
+     * locale makes it, and a character that charset lacks is sent as {@code ?}.
+     */
+    private static final String MESSAGE_CHARSET = StandardCharsets.UTF_8.name();
 
     private final String smtpServer;
     private final int smtpPort;
@@ -439,16 +447,31 @@ public class EmailNotifier implements Notifier {
             session = Session.getInstance(props);
         }
 
-        Message message = new MimeMessage(session);
+        Transport.send(buildMessage(session, subject, body));
+    }
+
+    /**
+     * Assemble the message {@link #sendNotification(String, String)} sends.
+     * Package-private for the same reason as {@link #buildSessionProperties()}: what
+     * the message holds can be asserted without a mail server being involved.
+     *
+     * @param session the session the message belongs to
+     * @param subject the email subject line
+     * @param body    the email body text
+     * @return the message, addressed to every configured recipient
+     * @throws MessagingException if the sender or a recipient cannot be parsed
+     */
+    MimeMessage buildMessage(Session session, String subject, String body) throws MessagingException {
+        MimeMessage message = new MimeMessage(session);
         message.setFrom(new InternetAddress(emailSender));
 
         for (String recipient : recipients) {
             message.addRecipient(Message.RecipientType.TO, new InternetAddress(recipient));
         }
 
-        message.setSubject(subject);
-        message.setText(body);
+        message.setSubject(subject, MESSAGE_CHARSET);
+        message.setText(body, MESSAGE_CHARSET);
 
-        Transport.send(message);
+        return message;
     }
 }
