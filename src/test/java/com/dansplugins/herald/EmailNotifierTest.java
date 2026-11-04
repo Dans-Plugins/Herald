@@ -746,7 +746,7 @@ class EmailNotifierTest {
         }
     }
 
-    /** Holds a Latin-1 letter and an emoji, the latter outside every legacy default charset. */
+    /** Holds a Latin-1 letter and an emoji, the latter missing from ISO-8859-1 and windows-1252. */
     private static final String NON_ASCII_SUBJECT = "⚔️ Château: {player} joined";
     private static final String NON_ASCII_BODY = "🏰 Bienvenue à Château";
 
