@@ -6,14 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [2.3.2] – 2026-11-04
+
 ### Fixed
 
 - Email subjects and bodies are now always sent as UTF-8. They used to be sent in the JVM's default charset, so on a server whose default is not UTF-8, which is possible on the Java 17 that 1.19.4 servers run on, a character that charset lacks arrived as `?`: an emoji in `email.subject` or `email.body` on a Windows host, for example, or in a `server-name` filling `{server}`.
-- `./up.sh` now creates the `testmcserver` directory before starting the Docker test server, so it works on a fresh clone. `compose.yml` bind-mounts that directory with the long volume syntax, which does not create a missing host path, so the stack used to stop with a `bind source path does not exist` error until the directory was made by hand. `testmcserver/` is now also in `.gitignore`, so the server's files no longer show up as untracked. The script is not exercised by CI; the change was checked by reading `compose.yml` against the Compose specification.
+
+## [2.3.1] – 2026-11-03
 
 ### Changed
 
 - The `Run Tests` workflow now declares `permissions: contents: read`, as `Build` and `Deploy Plugin to omcsi` already do, instead of running with the repository's default token permissions. `Run Tests` and `Build` no longer list the `master`, `dev` and `develop` branches in their triggers, since none of them exists, and `Deploy Plugin to omcsi` builds with the committed Gradle wrapper (`./gradlew build`) rather than whatever `gradle` is installed on the runner, matching the other workflows.
+
+### Fixed
+
+- `./up.sh` now creates the `testmcserver` directory before starting the Docker test server, so it works on a fresh clone. `compose.yml` bind-mounts that directory with the long volume syntax, which does not create a missing host path, so the stack used to stop with a `bind source path does not exist` error until the directory was made by hand. `testmcserver/` is now also in `.gitignore`, so the server's files no longer show up as untracked. The script is not exercised by CI; the change was checked by reading `compose.yml` against the Compose specification.
 
 ## [2.3.0] – 2026-10-28
 
@@ -121,7 +128,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Docker Compose setup for local mail-server testing
 - Discord webhook test scripts (Bash and Python)
 
-[Unreleased]: https://github.com/Dans-Plugins/Herald/compare/v2.3.0...HEAD
+[Unreleased]: https://github.com/Dans-Plugins/Herald/compare/v2.3.2...HEAD
+[2.3.2]: https://github.com/Dans-Plugins/Herald/releases/tag/v2.3.2
+[2.3.1]: https://github.com/Dans-Plugins/Herald/releases/tag/v2.3.1
 [2.3.0]: https://github.com/Dans-Plugins/Herald/releases/tag/v2.3.0
 [2.2.2]: https://github.com/Dans-Plugins/Herald/releases/tag/v2.2.2
 [2.2.1]: https://github.com/Dans-Plugins/Herald/releases/tag/v2.2.1
