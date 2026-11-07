@@ -8,7 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
-- A `smtp.username` with no `smtp.password`, or the reverse, is now reported with a warning at startup. Neither was mentioned before: a username alone failed authentication on every player join, and a password alone was ignored, so mail was sent without authentication. Email notifications still load in both cases.
+- A `smtp.username` with no `smtp.password`, or the reverse, is now reported with a warning at startup. Neither was mentioned before: a username alone failed authentication on every player join against a server that offers it, and a password alone was ignored, so mail was sent without authentication. Email notifications still load in both cases.
 
 ## [2.3.2] – 2026-11-04
 

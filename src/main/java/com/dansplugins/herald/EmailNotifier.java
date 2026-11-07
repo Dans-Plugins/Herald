@@ -213,8 +213,8 @@ public class EmailNotifier implements Notifier {
     /**
      * Describe an SMTP username and password that have not been filled in as a pair.
      * Authentication is decided by {@code smtp.username} alone, so a username with no
-     * password attempts it without one and fails on every join, and a password with no
-     * username is never sent at all. Reported as a warning rather than as a problem from
+     * password attempts it without one, which a server offering authentication refuses on
+     * every join, and a password with no username is never sent at all. Reported as a warning rather than as a problem from
      * {@link #validateConfiguration(List, String, int, String)} because Herald cannot tell
      * from here whether the relay requires authentication, and the password-only case
      * still delivers through one that does not. Neither value is repeated, since the
