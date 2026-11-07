@@ -98,6 +98,13 @@ final class NotifierLoader {
                     logger.warning(credentialExposure);
                 }
 
+                // Warned rather than refused because a relay that needs no authentication
+                // still delivers the mail of a config with only a password in it.
+                String incompleteCredentials = EmailNotifier.describeIncompleteCredentials(smtpUsername, smtpPassword);
+                if (incompleteCredentials != null) {
+                    logger.warning(incompleteCredentials);
+                }
+
                 // Also a warning rather than a refusal: the conventional ports are the
                 // common case, not the rule, and a relay is free to offer either mode
                 // anywhere.
