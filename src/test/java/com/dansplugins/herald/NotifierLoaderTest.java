@@ -297,6 +297,51 @@ class NotifierLoaderTest {
         }
 
         @Test
+        @DisplayName("A username with no password should still load email, with a warning")
+        void testUsernameWithoutPasswordIsWarned() {
+            YamlConfiguration config = emailConfig();
+            config.set("smtp.username", "user");
+            config.set("smtp.password", "");
+
+            assertEquals(1, load(config).size());
+
+            assertTrue(logged(Level.WARNING, "'smtp.username' is set but 'smtp.password' is empty"));
+        }
+
+        @Test
+        @DisplayName("A password with no username should still load email, with a warning")
+        void testPasswordWithoutUsernameIsWarned() {
+            YamlConfiguration config = emailConfig();
+            config.set("smtp.username", "");
+            config.set("smtp.password", "secret");
+
+            assertEquals(1, load(config).size());
+
+            assertTrue(logged(Level.WARNING, "'smtp.password' is set but 'smtp.username' is empty"));
+        }
+
+        @Test
+        @DisplayName("A complete username and password pair should log no credentials warning")
+        void testCompleteCredentialsAreNotWarned() {
+            YamlConfiguration config = emailConfig();
+            config.set("smtp.username", "user");
+            config.set("smtp.password", "secret");
+
+            assertEquals(1, load(config).size());
+
+            assertTrue(messagesAt(Level.WARNING).isEmpty(), "Unexpected warnings: " + messagesAt(Level.WARNING));
+        }
+
+        @Test
+        @DisplayName("The bundled config.yml should log no credentials warning")
+        void testBundledConfigIsNotWarnedAboutCredentials() {
+            load(bundledConfig());
+
+            assertFalse(logged(Level.WARNING, "'smtp.username' is set"));
+            assertFalse(logged(Level.WARNING, "'smtp.password' is set"));
+        }
+
+        @Test
         @DisplayName("Port 465 without implicit TLS should still load email, with a warning")
         void testPortTlsMismatchIsWarned() {
             YamlConfiguration config = emailConfig();

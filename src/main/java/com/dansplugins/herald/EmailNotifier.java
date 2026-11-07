@@ -211,6 +211,36 @@ public class EmailNotifier implements Notifier {
     }
 
     /**
+     * Describe an SMTP username and password that have not been filled in as a pair.
+     * Authentication is decided by {@code smtp.username} alone, so a username with no
+     * password attempts it without one and fails on every join, and a password with no
+     * username is never sent at all. Reported as a warning rather than as a problem from
+     * {@link #validateConfiguration(List, String, int, String)} because Herald cannot tell
+     * from here whether the relay requires authentication, and the password-only case
+     * still delivers through one that does not. Neither value is repeated, since the
+     * warning reaches the server log.
+     *
+     * @param smtpUsername the configured {@code smtp.username}
+     * @param smtpPassword the configured {@code smtp.password}
+     * @return the warning to log, or {@code null} when the two are both set or both empty
+     */
+    public static String describeIncompleteCredentials(String smtpUsername, String smtpPassword) {
+        boolean hasUsername = smtpUsername != null && !smtpUsername.isEmpty();
+        boolean hasPassword = smtpPassword != null && !smtpPassword.isEmpty();
+        if (hasUsername && !hasPassword) {
+            return "'smtp.username' is set but 'smtp.password' is empty, so authentication is attempted "
+                    + "without a password and is likely to fail on every player join. Set 'smtp.password', "
+                    + "or clear 'smtp.username' if the server does not require authentication.";
+        }
+        if (hasPassword && !hasUsername) {
+            return "'smtp.password' is set but 'smtp.username' is empty, so the password is ignored and "
+                    + "email is sent without authentication. Set 'smtp.username', or clear 'smtp.password' "
+                    + "if the server does not require authentication.";
+        }
+        return null;
+    }
+
+    /**
      * Describe the conflict between the two encryption modes.
      * STARTTLS upgrades a connection that began in plain text and implicit TLS
      * completes a handshake before the first command, so a session can be built for

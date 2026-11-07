@@ -10,6 +10,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 import static org.junit.jupiter.api.Assertions.*;
@@ -973,6 +974,56 @@ class EmailNotifierTest {
 
             assertFalse(warning.contains("user@example.com"),
                     "The warning names the key, not the credential itself: " + warning);
+        }
+    }
+
+    @Nested
+    @DisplayName("Incomplete Credentials Tests")
+    class IncompleteCredentialsTests {
+
+        @ParameterizedTest
+        @NullAndEmptySource
+        @DisplayName("A username with no password should be reported")
+        void testUsernameWithoutPassword(String smtpPassword) {
+            String warning = EmailNotifier.describeIncompleteCredentials("user@example.com", smtpPassword);
+
+            assertNotNull(warning, "Authenticating with no password fails on every join");
+            assertTrue(warning.contains("'smtp.password' is empty"), "Warning should name the missing key: " + warning);
+        }
+
+        @ParameterizedTest
+        @NullAndEmptySource
+        @DisplayName("A password with no username should be reported")
+        void testPasswordWithoutUsername(String smtpUsername) {
+            String warning = EmailNotifier.describeIncompleteCredentials(smtpUsername, "secret");
+
+            assertNotNull(warning, "A password with no username is never sent");
+            assertTrue(warning.contains("'smtp.username' is empty"), "Warning should name the missing key: " + warning);
+        }
+
+        @Test
+        @DisplayName("A complete pair should not be reported")
+        void testSilentWhenBothAreSet() {
+            assertNull(EmailNotifier.describeIncompleteCredentials("user@example.com", "secret"));
+        }
+
+        @ParameterizedTest
+        @CsvSource(value = {"NULL,NULL", "NULL,''", "'',NULL", "'',''"}, nullValues = "NULL")
+        @DisplayName("An unauthenticated setup should not be reported")
+        void testSilentWhenNeitherIsSet(String smtpUsername, String smtpPassword) {
+            assertNull(EmailNotifier.describeIncompleteCredentials(smtpUsername, smtpPassword));
+        }
+
+        @Test
+        @DisplayName("Neither warning should quote the value it is about")
+        void testWarningsKeepTheCredentialsOutOfTheLog() {
+            String missingPassword = EmailNotifier.describeIncompleteCredentials("user@example.com", "");
+            String missingUsername = EmailNotifier.describeIncompleteCredentials("", "hunter2");
+
+            assertFalse(missingPassword.contains("user@example.com"),
+                    "The warning names the key, not the credential itself: " + missingPassword);
+            assertFalse(missingUsername.contains("hunter2"),
+                    "The warning names the key, not the credential itself: " + missingUsername);
         }
     }
 

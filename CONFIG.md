@@ -133,6 +133,12 @@ smtp:
 **Default:** `""`
 **Description:** The username for SMTP authentication. Leave empty if your server does not require authentication.
 
+This key decides whether Herald authenticates at all, so it has to be filled in together with `smtp.password`. With a username and no password, authentication is attempted without a password and is likely to fail on every player join; with a password and no username, the password is ignored and email is sent without authentication. Herald warns at startup about either case, but email notifications still load, since a server that needs no authentication can still deliver:
+
+```
+'smtp.username' is set but 'smtp.password' is empty, so authentication is attempted without a password and is likely to fail on every player join. Set 'smtp.password', or clear 'smtp.username' if the server does not require authentication.
+```
+
 **Example:**
 
 ```yaml
@@ -144,7 +150,7 @@ smtp:
 
 **Type:** string
 **Default:** `""`
-**Description:** The password for SMTP authentication. Leave empty if your server does not require authentication.
+**Description:** The password for SMTP authentication. Leave empty if your server does not require authentication. It is only used alongside `smtp.username`; see that key for what happens when one is filled in without the other.
 
 **Example:**
 
