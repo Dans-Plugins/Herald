@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [2.3.3] – 2026-11-07
+
 ### Fixed
 
 - A `smtp.username` with no `smtp.password`, or the reverse, is now reported with a warning at startup. Neither was mentioned before: a username alone failed authentication on every player join against a server that offers it, and a password alone was ignored, so mail was sent without authentication. Email notifications still load in both cases.
@@ -132,7 +134,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Docker Compose setup for local mail-server testing
 - Discord webhook test scripts (Bash and Python)
 
-[Unreleased]: https://github.com/Dans-Plugins/Herald/compare/v2.3.2...HEAD
+[Unreleased]: https://github.com/Dans-Plugins/Herald/compare/v2.3.3...HEAD
+[2.3.3]: https://github.com/Dans-Plugins/Herald/releases/tag/v2.3.3
 [2.3.2]: https://github.com/Dans-Plugins/Herald/releases/tag/v2.3.2
 [2.3.1]: https://github.com/Dans-Plugins/Herald/releases/tag/v2.3.1
 [2.3.0]: https://github.com/Dans-Plugins/Herald/releases/tag/v2.3.0
