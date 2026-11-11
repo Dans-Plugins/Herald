@@ -31,9 +31,9 @@ Thank you for your interest in contributing to Herald! This guide will help you 
 
 Work items are tracked as [GitHub issues](https://github.com/Dans-Plugins/Herald/issues).
 
-### Milestones
+### Upcoming Releases
 
-Issues are grouped into [milestones](https://github.com/Dans-Plugins/Herald/milestones) representing upcoming releases.
+Issues are not assigned to milestones. User-facing changes merged since the last release are listed under `[Unreleased]` in [CHANGELOG.md](CHANGELOG.md).
 
 ## Making Changes
 
