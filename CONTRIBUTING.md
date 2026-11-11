@@ -33,7 +33,7 @@ Work items are tracked as [GitHub issues](https://github.com/Dans-Plugins/Herald
 
 ### Upcoming Releases
 
-Issues are not assigned to milestones. What has been merged since the last release is listed under `[Unreleased]` in [CHANGELOG.md](CHANGELOG.md).
+Issues are not assigned to milestones. User-facing changes merged since the last release are listed under `[Unreleased]` in [CHANGELOG.md](CHANGELOG.md).
 
 ## Making Changes
 
