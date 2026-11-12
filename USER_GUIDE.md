@@ -103,7 +103,10 @@ Some email failures are worth recognising by sight:
 - A failure mentioning an unrecognised command, or a handshake or SSL error, usually means the encryption mode and the port disagree — implicit TLS on a STARTTLS port, or the reverse. Herald warns about the two conventional ports at startup, so the startup log names it as well.
 - A failure naming the certificate, or reporting that the hostname does not match, means `smtp.verify-server-identity` is `true` and the certificate the server presented was issued for some other name than the one in `smtp.server`. Point `smtp.server` at the name the certificate carries where you can; where you cannot — a relay reached by IP address, for instance — set `smtp.verify-server-identity` to `false` and accept that the encrypted connection no longer proves who answered it.
 - A failure mentioning a connect timeout means no connection to `smtp.server` on `smtp.port` could be established within ten seconds — usually a wrong host or port, or a firewall dropping the packets.
-- A failure mentioning a read timeout means the connection was established but the server stopped answering, and Herald gave up after thirty seconds rather than waiting indefinitely. Either way the failure is reported, instead of the notification silently holding a task for every join.
+- A failure mentioning a read timeout means the connection was established but the server stopped answering, and Herald gave up after thirty seconds rather than waiting indefinitely.
+- Writing the message to the server is bounded by thirty seconds as well, so a server that accepts the connection but stops taking in data partway through a send is given up on too.
+
+For all three timeouts the failure is reported, instead of the notification silently holding a task for every join.
 
 Discord failures that mention a timeout mean the same two things, on shorter bounds:
 
