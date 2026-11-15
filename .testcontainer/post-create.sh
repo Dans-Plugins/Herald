@@ -52,12 +52,18 @@ copy_latest_plugin_jar() {
         ls -l "$BUILD_DIR" || log "ERROR: Failed to list files in the build directory."
         return 1
     fi
-    local jarFile=$(find "$BUILD_DIR/Herald/target" -name "Herald-*.jar" -type f -print -quit)
+    # Newest first: the image copies all of build/libs, which keeps the JAR of every version
+    # built since the last clean, so the first match in directory order may be an old one.
+    local jarFile=$(ls -t "$BUILD_DIR"/Herald/target/Herald-*.jar 2>/dev/null | grep -v -e '-sources\.jar$' -e '-javadoc\.jar$' | head -1)
 
     if [ -z "$jarFile" ]; then
         log "ERROR: No plugin JAR file found in the build directory."
         return 1
     fi
+
+    # plugins/ survives restarts unless OVERWRITE_EXISTING_SERVER is true, so a JAR copied in
+    # under an earlier version would otherwise be loaded alongside this one.
+    rm -f "$SERVER_DIR"/plugins/Herald*.jar
 
     local currentDate=$(date +%s)
     local jarDate=$(stat -c %Y "$jarFile")
