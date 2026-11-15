@@ -486,6 +486,42 @@ class HeraldIntegrationTest {
                         "config.yml should carry the '" + key + "' key an operator is expected to edit");
             }
         }
+
+        /**
+         * @return the shipped config.yml parsed the way Bukkit parses it, as UTF-8
+         */
+        private org.bukkit.configuration.file.YamlConfiguration parseDefaultConfig() throws java.io.IOException {
+            return org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(
+                    new java.io.StringReader(readDefaultConfig()));
+        }
+
+        // The shipped config.yml tells the operator to "delete the list entirely to use the
+        // defaults below", and CONFIG.md documents the shipped values as the defaults, so the
+        // values in the file and the fallbacks in code have to be the same text. Nothing
+        // ties the two together at compile time: one is YAML holding literal emoji, the
+        // other Java holding Unicode escapes.
+
+        @Test
+        @DisplayName("The shipped join messages should be the built-in defaults Herald falls back to")
+        void testShippedJoinMessagesMatchBuiltInDefaults() throws java.io.IOException {
+            assertEquals(DiscordNotifier.DEFAULT_JOIN_MESSAGES,
+                    parseDefaultConfig().getStringList("discord.join-messages"),
+                    "deleting discord.join-messages should leave the messages a fresh install sends unchanged");
+        }
+
+        @Test
+        @DisplayName("The shipped email subject should be the built-in default Herald falls back to")
+        void testShippedEmailSubjectMatchesBuiltInDefault() throws java.io.IOException {
+            assertEquals(EmailNotifier.DEFAULT_SUBJECT, parseDefaultConfig().getString("email.subject"),
+                    "emptying email.subject should leave the subject a fresh install sends unchanged");
+        }
+
+        @Test
+        @DisplayName("The shipped email body should be the built-in default Herald falls back to")
+        void testShippedEmailBodyMatchesBuiltInDefault() throws java.io.IOException {
+            assertEquals(EmailNotifier.DEFAULT_BODY, parseDefaultConfig().getString("email.body"),
+                    "emptying email.body should leave the body a fresh install sends unchanged");
+        }
     }
 
     @Nested
