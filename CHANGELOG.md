@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [2.3.4] – 2026-11-15
+
 ### Fixed
 
 - The Docker test server now loads only the newest build of Herald. On every start, `.testcontainer/post-create.sh` copied a `Herald-*.jar` into `plugins/` without removing the one already there, and `plugins/` is kept between starts unless `OVERWRITE_EXISTING_SERVER` is `true`. So after a version bump, `./gradlew build` then `./up.sh` left the old and the new JAR side by side, and the server loaded one of the two. The script also took whichever `Herald-*.jar` came first in directory order, and the image copies all of `build/libs`, which still holds the JAR of every version built since the last `./gradlew clean`. It now picks the most recently built JAR, as `reload-plugin.sh` already does, and removes any Herald JAR from `plugins/` before copying it in. The script is not exercised by CI; the change was checked by reading it against the `Dockerfile` and `compose.yml`.
@@ -138,7 +140,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Docker Compose setup for local mail-server testing
 - Discord webhook test scripts (Bash and Python)
 
-[Unreleased]: https://github.com/Dans-Plugins/Herald/compare/v2.3.3...HEAD
+[Unreleased]: https://github.com/Dans-Plugins/Herald/compare/v2.3.4...HEAD
+[2.3.4]: https://github.com/Dans-Plugins/Herald/releases/tag/v2.3.4
 [2.3.3]: https://github.com/Dans-Plugins/Herald/releases/tag/v2.3.3
 [2.3.2]: https://github.com/Dans-Plugins/Herald/releases/tag/v2.3.2
 [2.3.1]: https://github.com/Dans-Plugins/Herald/releases/tag/v2.3.1
