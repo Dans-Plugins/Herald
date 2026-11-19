@@ -288,7 +288,7 @@ email:
 
 **Type:** boolean
 **Default:** `true`
-**Description:** Whether the plugin reports usage events (see [Usage reporting](#usage-reporting) below). Set to `false` to turn it off.
+**Description:** Whether the plugin reports usage events (see [Usage reporting](#usage-reporting) below). Set to `false` to turn it off. Other spellings of the block or the switch (`usage_reporting:`, `usageReporting:`, `enable: false`, `disabled: true`), or `usage-reporting: false`, also count as off.
 
 **Example:**
 
