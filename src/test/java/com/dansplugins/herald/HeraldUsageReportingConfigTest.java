@@ -1,9 +1,14 @@
 package com.dansplugins.herald;
 
+import com.dansplugins.herald.trace.UsageReportingSetting;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
+import java.io.File;
+import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.file.Files;
 import java.nio.charset.StandardCharsets;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -70,5 +75,24 @@ class HeraldUsageReportingConfigTest {
         String bundled = bundledDefaults().getString("usage-reporting.endpoint");
 
         assertTrue(Herald.usageReportingNotice("Herald", bundled).contains(" to " + bundled + ","));
+    }
+
+    @TempDir
+    File folder;
+
+    @Test
+    void aFileBukkitCannotParseIsNotGivenTheBlockOverTheOperatorsSettings() throws IOException {
+        String broken = "usage-reporting:\n  enabled: false\n\tdiscord: [\n";
+        File file = new File(folder, "config.yml");
+        Files.write(file.toPath(), broken.getBytes(StandardCharsets.UTF_8));
+        // Bukkit loads a file it cannot parse as empty, so the block looks missing.
+        YamlConfiguration loaded = new YamlConfiguration();
+        loaded.setDefaults(bundledDefaults());
+        assertTrue(Herald.ensureUsageReportingBlockOnDisk(loaded));
+
+        // Herald.saveConfig() refuses to write over such a file, and reporting reads as off.
+        assertTrue(UsageReportingSetting.isUnparseable(file));
+        assertFalse(UsageReportingSetting.isEnabled(loaded, file));
+        assertEquals(broken, new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8));
     }
 }
