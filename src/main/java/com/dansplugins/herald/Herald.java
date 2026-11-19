@@ -1,6 +1,7 @@
 package com.dansplugins.herald;
 
 import com.dansplugins.herald.trace.TraceClient;
+import com.dansplugins.herald.trace.UsageReportingSetting;
 import org.bukkit.configuration.Configuration;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.event.EventHandler;
@@ -8,6 +9,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
@@ -59,6 +61,25 @@ public final class Herald extends JavaPlugin implements Listener {
         trace.report("startup");
 
         getLogger().info("Herald has been enabled!");
+    }
+
+    /**
+     * Every save of config.yml goes through here. A config.yml Bukkit could not parse was loaded
+     * as empty, so saving it would replace the operator's whole file, opt-out included, with the
+     * defaults: it is left alone instead. Otherwise an {@code enabled: false} found on disk is
+     * carried into the loaded config first, so a copy loaded before the operator edited the file
+     * cannot turn reporting back on.
+     */
+    @Override
+    public void saveConfig() {
+        File configFile = new File(getDataFolder(), "config.yml");
+        if (UsageReportingSetting.isUnparseable(configFile)) {
+            getLogger().severe("config.yml could not be read, so it was not overwritten. Fix the YAML error in it"
+                    + " and restart; until then the defaults are used, and usage reporting is off.");
+            return;
+        }
+        UsageReportingSetting.keepOptOutFromDisk(getConfig(), configFile);
+        super.saveConfig();
     }
 
     @Override
@@ -114,8 +135,11 @@ public final class Herald extends JavaPlugin implements Listener {
     // fall-through only matters if that write failed. Verified against
     // YamlConfiguration, not assumed.
 
+    // Not getBoolean(): it returns the bundled true for a quoted "false" or any other value
+    // that is not a YAML boolean. Only a value that clearly means "on" turns reporting on, and
+    // an opt-out in the file on disk (or a file that cannot be parsed) always wins.
     private boolean isUsageReportingEnabled() {
-        return getConfig().getBoolean(USAGE_REPORTING_ENABLED_KEY);
+        return UsageReportingSetting.isEnabled(getConfig(), new File(getDataFolder(), "config.yml"));
     }
 
     private String getUsageReportingEndpoint() {
