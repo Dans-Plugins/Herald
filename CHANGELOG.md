@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Fixed
 
 - Usage reporting could turn itself back on after it had been turned off. A `config.yml` with a YAML error anywhere in it was loaded by Bukkit as empty and then written over with the defaults on startup (when the block looked missing), replacing every setting and `usage-reporting.enabled: false` with `true`; the plugin now never writes over a `config.yml` it cannot parse (it logs the error, runs on the defaults with usage reporting off, and leaves the file for the operator to fix). A quoted `enabled: "false"`, or any other value that is not clearly on, was read as on and now turns reporting off. The vendored trace client is now 0.8.0, in which every opt-out fails closed: in `plugins/trace/config.yml` a quoted `"false"`, an empty `enabled:`, a typo, or a file that is there but unreadable now turn reporting off, as do `TRACE_USAGE_REPORTING` set to anything but blank or `true`/`on`/`yes`/`1` and `DO_NOT_TRACK` set to anything but blank or `0`/`false`/`off`/`no`.
+- An empty `usage-reporting.enabled:` (no value) now turns usage reporting off. Bukkit drops a key with no value, so the bundled `true` used to win.
 
 ## [2.3.4] – 2026-11-15
 
