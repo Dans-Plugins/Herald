@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [2.3.5] – 2026-11-19
+
 ### Fixed
 
 - Usage reporting could be turned back on by an upgrade when the opt-out was written in a way the plugin did not recognise: under another spelling of the block (`usage_reporting:`, `usageReporting:`), as `usage-reporting: false`, or with another spelling of the switch (`enable: false`, `disabled: true`). On each version change the plugin then added the bundled `usage-reporting` block, `enabled: true`, next to the operator's setting. Each of these now counts as off, and every save writes `usage-reporting.enabled: false` into the real block, so the file shows that reporting is off.
@@ -146,7 +148,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Docker Compose setup for local mail-server testing
 - Discord webhook test scripts (Bash and Python)
 
-[Unreleased]: https://github.com/Dans-Plugins/Herald/compare/v2.3.4...HEAD
+[Unreleased]: https://github.com/Dans-Plugins/Herald/compare/v2.3.5...HEAD
+[2.3.5]: https://github.com/Dans-Plugins/Herald/releases/tag/v2.3.5
 [2.3.4]: https://github.com/Dans-Plugins/Herald/releases/tag/v2.3.4
 [2.3.3]: https://github.com/Dans-Plugins/Herald/releases/tag/v2.3.3
 [2.3.2]: https://github.com/Dans-Plugins/Herald/releases/tag/v2.3.2
